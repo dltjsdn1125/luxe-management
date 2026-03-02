@@ -1036,15 +1036,23 @@ const SettlementPage = {
             });
         }
 
+        for (const e of data.expenseItems) {
+            await DB.insert('expenses', {
+                date: data.date, category_name: e.name, amount: e.amount,
+                memo: `정산 연동 (${sale.id.substring(0, 8)})`, entered_by: enteredBy
+            });
+        }
+
+        const inventory = await DB.getAll('liquor_inventory');
         for (const item of data.allLiquorItems) {
-            const inv = (await DB.getAll('liquor_inventory')).find(i => i.liquor_id === item.liquor_id);
+            const inv = inventory.find(i => i.liquor_id === item.liquor_id);
             if (inv) {
-                const newQty = Math.max(0, inv.quantity - item.qty - (item.service || 0));
+                const used = item.qty + (item.service || 0);
+                const newQty = Math.max(0, inv.quantity - used);
                 await DB.update('liquor_inventory', inv.id, { quantity: newQty });
             }
         }
 
-        // 다른 탭에 데이터 변경 알림
         DB.notifyChange();
 
         App.toast('정산이 저장되었습니다.', 'success');
