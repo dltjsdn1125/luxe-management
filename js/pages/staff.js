@@ -178,7 +178,7 @@ const StaffPage = {
                 <h3 class="text-sm font-bold">와리 지급 내역</h3>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-xs">
+                <table class="w-full text-xs" style="white-space:nowrap">
                     <thead>
                         <tr class="bg-slate-800/50 text-slate-500 text-[10px] uppercase tracking-wider">
                             <th class="px-3 md:px-4 py-2.5 text-left">날짜</th>
@@ -202,7 +202,7 @@ const StaffPage = {
                 <h3 class="text-sm font-bold">외상 채권 현황</h3>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-xs">
+                <table class="w-full text-xs" style="white-space:nowrap;min-width:400px">
                     <thead>
                         <tr class="bg-slate-800/50 text-slate-500 text-[10px] uppercase tracking-wider">
                             <th class="px-3 md:px-4 py-2.5 text-left">날짜</th>

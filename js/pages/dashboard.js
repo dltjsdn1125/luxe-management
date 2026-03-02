@@ -179,16 +179,16 @@ const DashboardPage = {
 
             <!-- 당일 마감 현황 -->
             <div class="bg-slate-900 rounded-xl border border-slate-800 p-4 mb-6">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined ${closedCount === staff.length ? 'text-emerald-400' : 'text-amber-300'} text-lg">task_alt</span>
-                        <span class="text-sm font-bold text-white">당일 마감 현황</span>
-                        <span class="text-[10px] text-slate-500 font-mono">${todayStr}</span>
+                <div class="flex items-center justify-between mb-3 flex-nowrap gap-1">
+                    <div class="flex items-center gap-1 shrink-0">
+                        <span class="material-symbols-outlined ${closedCount === staff.length ? 'text-emerald-400' : 'text-amber-300'} text-base">task_alt</span>
+                        <span class="text-xs font-bold text-white">마감현황</span>
+                        <span class="text-[10px] text-slate-500 font-mono hidden sm:inline">${todayStr}</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-[10px] text-slate-600 flex items-center gap-1"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>30초 자동갱신</span>
-                        ${unclosedTotal > 0 ? `<span class="text-[10px] font-bold text-red-300 bg-red-500/10 px-2 py-1 rounded-full">미마감 ${unclosedTotal}건</span>` : ''}
-                        <span class="text-xs font-bold ${closedCount === staff.length ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-300 bg-amber-300/10'} px-2.5 py-1 rounded-full">${closedCount}/${staff.length} 완료</span>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <span class="text-[10px] text-slate-600 items-center gap-0.5 hidden sm:flex"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>자동갱신</span>
+                        ${unclosedTotal > 0 ? `<span class="text-[10px] font-bold text-red-300 bg-red-500/10 px-1.5 py-0.5 rounded-full">${unclosedTotal}건</span>` : ''}
+                        <span class="text-[10px] font-bold ${closedCount === staff.length ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-300 bg-amber-300/10'} px-1.5 py-0.5 rounded-full">${closedCount}/${staff.length}</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
@@ -342,9 +342,9 @@ const DashboardPage = {
                     <h4 class="font-bold text-lg">지점별 순이익 분석</h4>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm whitespace-nowrap">
+                    <table class="w-full text-left text-sm" style="white-space:nowrap;min-width:600px">
                         <thead><tr class="bg-slate-800/50 text-[10px] text-slate-500 uppercase tracking-wider">
-                            <th class="px-4 md:px-6 py-3 font-semibold">지점</th>
+                            <th class="px-3 md:px-6 py-3 font-semibold">지점</th>
                             <th class="px-4 md:px-6 py-3 font-semibold">매출</th>
                             <th class="px-4 md:px-6 py-3 font-semibold">와리</th>
                             <th class="px-4 md:px-6 py-3 font-semibold hidden md:table-cell">아가씨</th>
@@ -427,9 +427,9 @@ const DashboardPage = {
                     <button onclick="App.navigate('staff')" class="text-xs text-blue-500 font-bold hover:underline">상세 관리</button>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm whitespace-nowrap">
+                    <table class="w-full text-left text-sm" style="white-space:nowrap;min-width:700px">
                         <thead><tr class="bg-slate-800/50 text-slate-500 text-[10px] uppercase tracking-wider">
-                            <th class="px-4 md:px-6 py-3 font-semibold">직원</th><th class="px-4 md:px-6 py-3 font-semibold">지점</th>
+                            <th class="px-3 md:px-6 py-3 font-semibold">직원</th><th class="px-3 md:px-6 py-3 font-semibold">지점</th>
                             <th class="px-4 md:px-6 py-3 font-semibold">직책</th><th class="px-4 md:px-6 py-3 font-semibold">정산</th>
                             <th class="px-4 md:px-6 py-3 font-semibold">매출</th><th class="px-4 md:px-6 py-3 font-semibold">와리</th>
                             <th class="px-4 md:px-6 py-3 font-semibold">순이익</th>
@@ -463,16 +463,16 @@ const DashboardPage = {
                         <button onclick="App.navigate('settlement')" class="text-xs text-blue-500 font-bold hover:underline">전체 보기</button>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm"><thead><tr class="bg-slate-800/50 text-slate-500 text-[10px] uppercase tracking-wider">
-                            <th class="px-4 md:px-6 py-3">날짜</th><th class="px-4 md:px-6 py-3">직원</th><th class="px-4 md:px-6 py-3">주대</th><th class="px-4 md:px-6 py-3">정산금</th>
+                        <table class="w-full text-left text-sm" style="white-space:nowrap;min-width:480px"><thead><tr class="bg-slate-800/50 text-slate-500 text-[10px] uppercase tracking-wider">
+                            <th class="px-3 md:px-6 py-3">날짜</th><th class="px-3 md:px-6 py-3">직원</th><th class="px-3 md:px-6 py-3">주대</th><th class="px-3 md:px-6 py-3">정산금</th>
                         </tr></thead><tbody class="divide-y divide-slate-800">
                             ${recentSales.length > 0 ? recentSales.map(s => {
                                 const eb = staff.find(st => st.id === s.entered_by);
                                 return `<tr class="hover:bg-slate-800/30 cursor-pointer" onclick="App.navigate('settlement')">
-                                    <td class="px-4 md:px-6 py-3 font-mono text-slate-400">${s.date}</td>
-                                    <td class="px-4 md:px-6 py-3"><span class="text-xs px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded font-bold">${eb ? (eb.branch_name ? eb.branch_name + ' (' + eb.name + ')' : eb.name) : '관리자'}</span></td>
-                                    <td class="px-4 md:px-6 py-3 font-bold text-white">${Format.won(s.total_revenue)}</td>
-                                    <td class="px-4 md:px-6 py-3 font-bold text-blue-500">${Format.won(s.net_settlement)}</td>
+                                    <td class="px-3 md:px-6 py-3 font-mono text-slate-400" style="white-space:nowrap">${s.date}</td>
+                                    <td class="px-3 md:px-6 py-3" style="white-space:nowrap"><span class="text-xs px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded font-bold">${eb ? (eb.branch_name ? eb.branch_name + ' ' + eb.name : eb.name) : '관리자'}</span></td>
+                                    <td class="px-3 md:px-6 py-3 font-bold text-white" style="white-space:nowrap">${Format.won(s.total_revenue)}</td>
+                                    <td class="px-3 md:px-6 py-3 font-bold text-blue-500" style="white-space:nowrap">${Format.won(s.net_settlement)}</td>
                                 </tr>`;
                             }).join('') : `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-500">정산 데이터가 없습니다.</td></tr>`}
                         </tbody></table>
@@ -773,8 +773,8 @@ const DashboardPage = {
             <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden mb-8">
                 <div class="p-4 md:p-6 border-b border-slate-800"><h4 class="font-bold text-lg">내 정산 내역</h4></div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm"><thead><tr class="bg-slate-800/50 text-slate-500 text-[10px] uppercase tracking-wider">
-                        <th class="px-4 md:px-6 py-3">날짜</th><th class="px-4 md:px-6 py-3">주대</th><th class="px-4 md:px-6 py-3 hidden sm:table-cell">방 수</th><th class="px-4 md:px-6 py-3">정산금</th>
+                    <table class="w-full text-left text-sm" style="white-space:nowrap;min-width:400px"><thead><tr class="bg-slate-800/50 text-slate-500 text-[10px] uppercase tracking-wider">
+                        <th class="px-3 md:px-6 py-3">날짜</th><th class="px-3 md:px-6 py-3">주대</th><th class="px-3 md:px-6 py-3 hidden sm:table-cell">방 수</th><th class="px-3 md:px-6 py-3">정산금</th>
                     </tr></thead><tbody class="divide-y divide-slate-800">
                         ${mySales.length > 0 ? mySales.map(s => `<tr class="hover:bg-slate-800/30"><td class="px-4 md:px-6 py-4 font-mono text-slate-400">${s.date}</td><td class="px-4 md:px-6 py-4 font-bold text-white">${Format.won(s.total_revenue)}</td><td class="px-4 md:px-6 py-4 text-slate-400 hidden sm:table-cell">${s.rooms || '-'}</td><td class="px-4 md:px-6 py-4 font-bold text-blue-500">${Format.won(s.net_settlement)}</td></tr>`).join('') :
                         `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-500">아직 정산 데이터가 없습니다.<br><button onclick="App.navigate('settlement')" class="mt-3 text-blue-500 font-bold text-sm hover:underline">첫 정산 입력하기</button></td></tr>`}

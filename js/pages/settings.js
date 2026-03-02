@@ -64,7 +64,6 @@ const SettingsPage = {
                         <span class="material-symbols-outlined text-blue-500">settings</span>
                         기초설정 관리
                     </h1>
-                    <p class="text-slate-400 text-sm">지점, 룸, 주류, 직원, 아가씨, 지출 등 모든 기초 정보를 설정합니다.</p>
                 </div>
             </div>
 

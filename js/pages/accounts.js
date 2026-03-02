@@ -36,7 +36,7 @@ const AccountsPage = {
                     <span class="text-[10px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full ml-2">${adminAccounts.length}개</span>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left whitespace-nowrap">
+                    <table class="w-full text-sm text-left whitespace-nowrap" style="white-space:nowrap;min-width:500px">
                         <thead class="bg-slate-800/50">
                             <tr>
                                 <th class="px-4 md:px-6 py-3 font-semibold text-slate-400">이름</th>
@@ -86,7 +86,7 @@ const AccountsPage = {
                     <span class="text-[10px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full ml-2">${staffAccounts.length}개</span>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left whitespace-nowrap">
+                    <table class="w-full text-sm text-left whitespace-nowrap" style="white-space:nowrap;min-width:600px">
                         <thead class="bg-slate-800/50">
                             <tr>
                                 <th class="px-4 md:px-6 py-3 font-semibold text-slate-400">이름</th>

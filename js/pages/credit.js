@@ -103,7 +103,7 @@ const CreditPage = {
             <!-- 외상 테이블 -->
             <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm whitespace-nowrap">
+                    <table class="w-full text-left text-sm whitespace-nowrap" style="white-space:nowrap;min-width:600px">
                         <thead>
                             <tr class="bg-slate-800/50 border-b border-slate-700">
                                 <th class="px-4 md:px-6 py-4 font-semibold text-slate-300">날짜</th>

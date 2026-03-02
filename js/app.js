@@ -25,9 +25,13 @@ const App = {
 
         window.addEventListener('hashchange', () => { this.handleRoute(); });
 
-        DB.subscribe(async () => {
+        this._realtimeDebounce = null;
+        DB.subscribe(() => {
             if (this.currentPage && this.currentPage !== 'login') {
-                await this.renderPage(this.currentPage, { silent: true });
+                clearTimeout(this._realtimeDebounce);
+                this._realtimeDebounce = setTimeout(() => {
+                    this.renderPage(this.currentPage, { silent: true });
+                }, 500);
             }
         });
 
@@ -59,7 +63,11 @@ const App = {
         await this.renderPage(page);
     },
 
+    _silentRefreshing: false,
+
     async renderPage(page, { silent = false } = {}) {
+        if (silent && this._silentRefreshing) return;
+
         const container = document.getElementById('app-content');
         const pageModule = this.routes[page];
 
@@ -85,11 +93,24 @@ const App = {
         }
 
         if (silent) {
+            this._silentRefreshing = true;
             const scrollY = window.scrollY;
             container.classList.remove('page-enter');
-            container.innerHTML = '';
-            await pageModule.render(container);
-            window.scrollTo(0, scrollY);
+            container.style.minHeight = container.offsetHeight + 'px';
+            container.style.opacity = '1';
+            try {
+                await pageModule.render(container);
+            } catch (e) {
+                console.warn('Silent refresh error:', e);
+            }
+            requestAnimationFrame(() => {
+                window.scrollTo(0, scrollY);
+                setTimeout(() => {
+                    container.style.minHeight = '';
+                    container.style.opacity = '';
+                    this._silentRefreshing = false;
+                }, 50);
+            });
         } else {
             container.innerHTML = '';
             container.className = 'page-enter';

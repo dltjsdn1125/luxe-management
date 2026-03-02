@@ -134,7 +134,7 @@ const SettlementPage = {
                     <h4 class="font-bold text-sm">지점별 순이익 분석</h4>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm whitespace-nowrap">
+                    <table class="w-full text-left text-sm whitespace-nowrap" style="white-space:nowrap;min-width:700px">
                         <thead><tr class="bg-slate-800/50 text-[10px] text-slate-500 uppercase tracking-wider">
                             <th class="px-4 md:px-6 py-3 font-semibold">지점</th>
                             <th class="px-4 md:px-6 py-3 font-semibold">정산 수</th>
@@ -200,7 +200,7 @@ const SettlementPage = {
             </div>` : ''}
             <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm whitespace-nowrap">
+                    <table class="w-full text-left text-sm whitespace-nowrap" style="white-space:nowrap;min-width:600px">
                         <thead>
                             <tr class="bg-slate-800/50 border-b border-slate-700">
                                 <th class="px-4 md:px-6 py-4 font-semibold text-slate-300">날짜 / 상태</th>
@@ -879,7 +879,7 @@ const SettlementPage = {
         </div>
         ${roomsHTML}
         <div class="bg-slate-900 rounded-lg border border-slate-700 overflow-hidden mt-3">
-            <table class="w-full text-xs">
+            <table class="w-full text-xs" style="white-space:nowrap">
                 <tbody class="divide-y divide-slate-800">
                     <tr><td class="px-3 py-2 text-slate-400">총 주대</td><td class="px-3 py-2 text-right font-mono text-white">${Format.number(data.totalJoodae)}</td></tr>
                     <tr><td class="px-3 py-2 text-slate-400">총 T/C</td><td class="px-3 py-2 text-right font-mono text-white">${Format.number(data.totalTc)}</td></tr>
@@ -1058,7 +1058,7 @@ const SettlementPage = {
 
         const oldFormatHTML = !hasRoomData ? `
             ${sale.liquor_items && sale.liquor_items.length > 0 ? `<div class="mb-4"><h4 class="text-[10px] font-bold text-slate-500 uppercase mb-2">판매 주류</h4>${sale.liquor_items.map(item => `<div class="flex justify-between text-sm mb-1"><span class="text-slate-300">${item.name} ×${item.qty}</span><span class="font-mono text-white">${Format.number(item.subtotal)}</span></div>`).join('')}</div>` : ''}
-            <table class="w-full text-sm"><tbody class="divide-y divide-slate-800">
+            <table class="w-full text-sm" style="white-space:nowrap"><tbody class="divide-y divide-slate-800">
                 <tr><td class="px-3 py-2 text-slate-300">현금</td><td class="px-3 py-2 text-right font-mono">${Format.number(sale.cash_amount)}</td></tr>
                 <tr><td class="px-3 py-2 text-slate-300">카드</td><td class="px-3 py-2 text-right font-mono">${Format.number(sale.card_amount)}</td></tr>
             </tbody></table>` : '';
@@ -1099,7 +1099,7 @@ const SettlementPage = {
                     ${oldFormatHTML}
 
                     <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden mt-4">
-                        <table class="w-full text-sm">
+                        <table class="w-full text-sm" style="white-space:nowrap">
                             <tbody class="divide-y divide-slate-800">
                                 ${hasRoomData ? `
                                 <tr><td class="px-4 py-3 text-slate-300">총 주대</td><td class="px-4 py-3 text-right font-mono text-white">${Format.number(sale.total_joodae || 0)}</td></tr>

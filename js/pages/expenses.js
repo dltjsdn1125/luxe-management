@@ -105,7 +105,7 @@ const ExpensesPage = {
                     <h3 class="font-bold">지출 내역</h3>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left whitespace-nowrap">
+                    <table class="w-full text-sm text-left whitespace-nowrap" style="white-space:nowrap;min-width:500px">
                         <thead class="bg-slate-800/50 text-[10px] text-slate-500 uppercase tracking-wider">
                             <tr>
                                 <th class="px-4 md:px-6 py-3">날짜</th>

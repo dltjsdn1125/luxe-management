@@ -121,14 +121,31 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 .settings-section { animation: fadeIn 0.15s ease-out; }
 
-/* Settings tables - force horizontal on mobile */
-.settings-section table {
+/* Force horizontal text everywhere - prevent vertical characters on mobile */
+* {
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+}
+
+/* All tables - force horizontal text */
+table th,
+table td {
     white-space: nowrap;
 }
-.settings-section table th,
-.settings-section table td {
-    white-space: nowrap;
+table {
+    table-layout: auto;
 }
+
+/* Scrollable table containers on mobile */
+@media (max-width: 768px) {
+    .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+    table { min-width: max-content; }
+    th, td { padding-left: 8px !important; padding-right: 8px !important; }
+    .text-xs { font-size: 11px; }
+    .text-\[10px\] { font-size: 10px; }
+}
+
+/* Settings tables */
 .settings-section .branch-filter {
     white-space: nowrap;
     flex-shrink: 0;

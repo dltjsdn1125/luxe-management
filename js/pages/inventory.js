@@ -136,7 +136,7 @@ const InventoryPage = {
                     </h3>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm whitespace-nowrap">
+                    <table class="w-full text-left text-sm whitespace-nowrap" style="white-space:nowrap;min-width:500px">
                         <thead class="bg-slate-800/50 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                             <tr>
                                 <th class="px-4 md:px-6 py-4">날짜</th>
