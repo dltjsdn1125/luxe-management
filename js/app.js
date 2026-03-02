@@ -27,7 +27,7 @@ const App = {
 
         DB.subscribe(async () => {
             if (this.currentPage && this.currentPage !== 'login') {
-                await this.renderPage(this.currentPage);
+                await this.renderPage(this.currentPage, { silent: true });
             }
         });
 
@@ -59,7 +59,7 @@ const App = {
         await this.renderPage(page);
     },
 
-    async renderPage(page) {
+    async renderPage(page, { silent = false } = {}) {
         const container = document.getElementById('app-content');
         const pageModule = this.routes[page];
 
@@ -84,11 +84,18 @@ const App = {
             this.updateUserInfo();
         }
 
-        container.innerHTML = '';
-        container.className = 'page-enter';
-        await pageModule.render(container);
-
-        window.scrollTo(0, 0);
+        if (silent) {
+            const scrollY = window.scrollY;
+            container.classList.remove('page-enter');
+            container.innerHTML = '';
+            await pageModule.render(container);
+            window.scrollTo(0, scrollY);
+        } else {
+            container.innerHTML = '';
+            container.className = 'page-enter';
+            await pageModule.render(container);
+            window.scrollTo(0, 0);
+        }
     },
 
     updateNav(activePage) {
@@ -147,8 +154,8 @@ const App = {
     _startAutoRefresh() {
         DB.stopAutoRefresh(this._autoRefreshInterval);
         this._autoRefreshInterval = DB.startAutoRefresh(async () => {
-            if (this.currentPage === 'dashboard' && Auth.isLoggedIn() && Auth.isAdmin()) {
-                await this.renderPage('dashboard');
+            if (this.currentPage && this.currentPage !== 'login' && Auth.isLoggedIn()) {
+                await this.renderPage(this.currentPage, { silent: true });
             }
         }, 30000);
     },
