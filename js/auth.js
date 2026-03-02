@@ -8,14 +8,21 @@ const Auth = {
 
     _setSession(session) {
         this._session = session;
+        try { sessionStorage.setItem('_auth_session', JSON.stringify(session)); } catch(e) {}
     },
 
     _clearSession() {
         this._session = null;
+        try { sessionStorage.removeItem('_auth_session'); } catch(e) {}
     },
 
     _readSession() {
-        return this._session;
+        if (this._session) return this._session;
+        try {
+            const saved = sessionStorage.getItem('_auth_session');
+            if (saved) { this._session = JSON.parse(saved); return this._session; }
+        } catch(e) {}
+        return null;
     },
 
     // 데모 계정 초기화
@@ -31,8 +38,9 @@ const Auth = {
         await this._restoreAuthSession();
     },
 
-    // Supabase Auth 세션이 있으면 앱 세션을 인메모리로 복구
     async _restoreAuthSession() {
+        if (this._readSession()) return;
+
         const { data: { session } } = await this._sb().auth.getSession();
         if (session && session.user) {
             const users = await DB.getAll('users');
@@ -46,22 +54,6 @@ const Auth = {
                     role: user.role,
                     staff_id: user.staff_id || null,
                     email: user.email
-                });
-            }
-        }
-        // Supabase Auth 세션이 없으면 users 테이블에서 admin 자동 로그인 (데모용)
-        if (!this._session) {
-            const users = await DB.getAll('users');
-            const admin = users.find(u => u.role === 'admin');
-            if (admin) {
-                this._setSession({
-                    id: admin.id,
-                    auth_id: admin.auth_id || null,
-                    username: admin.username,
-                    name: admin.name,
-                    role: admin.role,
-                    staff_id: admin.staff_id || null,
-                    email: admin.email
                 });
             }
         }
