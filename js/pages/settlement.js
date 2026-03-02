@@ -590,9 +590,9 @@ const SettlementPage = {
         const jEl = roomCard.querySelector('.room-joodae');
         const tEl = roomCard.querySelector('.room-tc');
         const totEl = roomCard.querySelector('.room-total');
-        if (jEl) jEl.textContent = Format.won(joodae);
-        if (tEl) tEl.textContent = Format.won(tc) + ` (${totalTimes}T)`;
-        if (totEl) totEl.textContent = Format.won(total);
+        if (jEl) { jEl.textContent = Format.won(joodae); jEl.dataset.value = joodae; }
+        if (tEl) { tEl.textContent = `${Format.won(tc)} (${totalTimes}T)`; tEl.dataset.value = tc; }
+        if (totEl) { totEl.textContent = Format.won(total); totEl.dataset.value = total; }
     },
 
     _bindFormEvents(container, staff, liquors, girlsList) {
@@ -864,8 +864,8 @@ const SettlementPage = {
     _autoCalcWari() {
         let totalRevenue = 0;
         document.querySelectorAll('.room-card').forEach(card => {
-            const joodae = Format.parseNumber(card.querySelector('.room-joodae')?.textContent);
-            const tc = Format.parseNumber(card.querySelector('.room-tc')?.textContent);
+            const joodae = parseInt(card.querySelector('.room-joodae')?.dataset?.value) || 0;
+            const tc = parseInt(card.querySelector('.room-tc')?.dataset?.value) || 0;
             totalRevenue += joodae + tc;
         });
 
