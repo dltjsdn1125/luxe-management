@@ -956,6 +956,16 @@ const SettlementPage = {
         if (!data.date) { App.toast('날짜를 입력해주세요.', 'error'); return; }
         if (data.roomData.length === 0) { App.toast('최소 1개의 룸을 추가해주세요.', 'error'); return; }
 
+        for (const r of data.roomData) {
+            const revenue = r.room_revenue;
+            const payTotal = r.pay_cash + r.pay_card + r.pay_borrowing + r.pay_other + r.pay_credit;
+            if (revenue > 0 && payTotal !== revenue) {
+                const diff = revenue - payTotal;
+                App.toast(`Room ${r.room_number || '?'}: 매출 ${Format.won(revenue)}과 결제 합계 ${Format.won(payTotal)}이 일치하지 않습니다. (차액: ${Format.won(diff)})`, 'error');
+                return;
+            }
+        }
+
         // entered_by 보장: staff_id가 없으면 세션에서 재확인
         let enteredBy = data.enteredBy;
         if (!enteredBy) {
