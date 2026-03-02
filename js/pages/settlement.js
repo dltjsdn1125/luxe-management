@@ -1153,12 +1153,29 @@ const SettlementPage = {
             const el = document.getElementById('printable-area');
             if (!el) return;
             App.toast('PDF 생성 중...', 'info');
+
+            const tables = el.querySelectorAll('table');
+            const savedStyles = [];
+            tables.forEach(t => {
+                savedStyles.push(t.getAttribute('style') || '');
+                t.style.whiteSpace = 'normal';
+                t.style.minWidth = '0';
+            });
+            const cells = el.querySelectorAll('td, th');
+            cells.forEach(c => { c.style.whiteSpace = 'normal'; });
+
             html2pdf().set({
-                margin: 10, filename: `정산서_${sale.date}.pdf`,
-                image: { type: 'jpeg', quality: 0.95 },
-                html2canvas: { scale: 2, backgroundColor: '#1e293b', useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            }).from(el).save().then(() => App.toast('PDF 다운로드 완료', 'success'));
+                margin: [10, 8, 10, 8],
+                filename: `정산서_${sale.date}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, backgroundColor: '#1e293b', useCORS: true, scrollY: 0, windowWidth: 800 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+            }).from(el).save().then(() => {
+                tables.forEach((t, i) => { t.setAttribute('style', savedStyles[i]); });
+                cells.forEach(c => { c.style.whiteSpace = ''; });
+                App.toast('PDF 다운로드 완료', 'success');
+            });
         });
     }
 };
