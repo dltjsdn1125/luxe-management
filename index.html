@@ -33,9 +33,97 @@
     </script>
     <style>
         @media print {
-            #app-header, #app-sidebar, #app-footer, #toast-container { display: none !important; }
-            #main-wrapper { margin-left: 0 !important; }
-            body { background: white !important; color: black !important; }
+            /* 인쇄 시 모든 UI 요소 숨김 */
+            body * { visibility: hidden !important; }
+
+            /* #printable-area와 그 자식만 표시 */
+            #printable-area,
+            #printable-area * {
+                visibility: visible !important;
+            }
+
+            #printable-area {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 15mm !important;
+                background: white !important;
+                border: none !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                overflow: visible !important;
+            }
+
+            /* 인쇄 배경/색상 */
+            body { background: white !important; margin: 0 !important; padding: 0 !important; }
+            #printable-area .paper-grid { display: none !important; }
+
+            /* 다크 테마 색상을 인쇄용으로 변환 */
+            #printable-area,
+            #printable-area table,
+            #printable-area td,
+            #printable-area th,
+            #printable-area span,
+            #printable-area p,
+            #printable-area div,
+            #printable-area h1,
+            #printable-area h2,
+            #printable-area h3,
+            #printable-area h4 {
+                color: #1a1a1a !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            #printable-area .bg-slate-800\/30,
+            #printable-area .bg-slate-800\/50,
+            #printable-area .bg-slate-800\/40,
+            #printable-area .bg-slate-900 {
+                background: #f8f9fa !important;
+                border-color: #dee2e6 !important;
+            }
+
+            #printable-area .bg-slate-800\/30,
+            #printable-area [class*="bg-slate"] {
+                background: transparent !important;
+            }
+
+            #printable-area table {
+                background: white !important;
+            }
+
+            #printable-area .border-slate-700,
+            #printable-area .border-slate-700\/50,
+            #printable-area .border-slate-800,
+            #printable-area .border-slate-600 {
+                border-color: #ccc !important;
+            }
+
+            #printable-area .divide-slate-800 > * + * {
+                border-color: #ddd !important;
+            }
+
+            /* 강조 색상 유지 */
+            #printable-area .text-blue-400,
+            #printable-area .text-blue-500 { color: #2563eb !important; }
+            #printable-area .text-red-300 { color: #dc2626 !important; }
+            #printable-area .text-pink-400,
+            #printable-area .text-pink-300 { color: #db2777 !important; }
+            #printable-area .text-emerald-400 { color: #059669 !important; }
+
+            /* 최종 정산금 행 강조 */
+            #printable-area tfoot tr:last-of-type,
+            #printable-area .bg-slate-800\/40 {
+                background: #f0f4ff !important;
+            }
+
+            /* 페이지 설정 */
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
         }
     </style>
 </head>
