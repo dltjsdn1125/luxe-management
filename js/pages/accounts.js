@@ -227,7 +227,25 @@ const AccountsPage = {
                         return;
                     }
 
-                    await DB.update('users', user.id, updates);
+                    const result = await DB.update('users', user.id, updates);
+                    if (!result) {
+                        App.toast('계정 수정에 실패했습니다.', 'error');
+                        return;
+                    }
+
+                    // Supabase Auth 비밀번호도 동기화 시도
+                    if (newPw && user.email) {
+                        try {
+                            await window._supabase.auth.signInWithPassword({
+                                email: user.email,
+                                password: user.password
+                            });
+                            await window._supabase.auth.updateUser({ password: newPw });
+                        } catch (e) {
+                            console.warn('Supabase Auth pw sync:', e.message);
+                        }
+                    }
+
                     App.toast('계정이 수정되었습니다.', 'success');
                     App.renderPage('accounts');
                 });
@@ -240,7 +258,17 @@ const AccountsPage = {
                 const user = await DB.getById('users', btn.dataset.resetPw);
                 if (!user) return;
                 if (confirm(`${user.name}(${user.username})의 비밀번호를 1234로 초기화하시겠습니까?`)) {
-                    await DB.update('users', user.id, { password: '1234' });
+                    const result = await DB.update('users', user.id, { password: '1234' });
+                    if (!result) {
+                        App.toast('비밀번호 초기화에 실패했습니다.', 'error');
+                        return;
+                    }
+                    if (user.email) {
+                        try {
+                            await window._supabase.auth.signInWithPassword({ email: user.email, password: user.password });
+                            await window._supabase.auth.updateUser({ password: '1234' });
+                        } catch (e) { console.warn('Auth pw reset sync:', e.message); }
+                    }
                     App.toast(`${user.name}의 비밀번호가 1234로 초기화되었습니다.`, 'success');
                     App.renderPage('accounts');
                 }
@@ -328,7 +356,22 @@ const AccountsPage = {
                     staffId = newStaff.id;
                 }
 
-                await DB.insert('users', { name, username, password, role, staff_id: staffId });
+                const email = `${username.replace(/\s/g, '')}@luxemgmt.app`;
+
+                // Supabase Auth에 등록 시도
+                try {
+                    await window._supabase.auth.signUp({
+                        email,
+                        password,
+                        options: { data: { name, role, username } }
+                    });
+                } catch (e) { console.warn('Auth signUp:', e.message); }
+
+                const newUser = await DB.insert('users', { name, username, password, email, role, staff_id: staffId });
+                if (!newUser) {
+                    App.toast('계정 생성에 실패했습니다.', 'error');
+                    return;
+                }
                 App.toast('계정이 생성되었습니다.', 'success');
                 App.renderPage('accounts');
             });

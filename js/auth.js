@@ -167,43 +167,32 @@ const Auth = {
         return newUser;
     },
 
-    // 로그인 (Supabase Auth 사용)
+    // 로그인 (users 테이블 우선, Supabase Auth 보조)
     async login(username, password) {
-        // 1) users 테이블에서 username으로 email 조회
         const users = await DB.getAll('users');
         const user = users.find(u => u.username === username);
         if (!user) return null;
 
-        const email = user.email;
-        if (!email) {
-            // email이 없는 레거시 계정 → 커스텀 인증 폴백
-            if (user.password === password) {
-                return this._buildSession(user);
+        // users 테이블 비밀번호 확인 (항상 우선)
+        if (user.password !== password) return null;
+
+        // Supabase Auth 세션도 동기화 시도 (실패해도 로그인은 허용)
+        if (user.email) {
+            try {
+                const { data, error } = await this._sb().auth.signInWithPassword({
+                    email: user.email,
+                    password
+                });
+                if (!error && data.user && !user.auth_id) {
+                    await DB.update('users', user.id, { auth_id: data.user.id });
+                    return this._buildSession(user, data.user.id);
+                }
+            } catch (e) {
+                console.warn('Supabase Auth sync:', e.message);
             }
-            return null;
         }
 
-        // 2) Supabase Auth로 로그인
-        const { data, error } = await this._sb().auth.signInWithPassword({
-            email,
-            password
-        });
-
-        if (error) {
-            console.warn('Supabase Auth login failed:', error.message);
-            // 폴백: 커스텀 users 테이블 비밀번호 확인
-            if (user.password === password) {
-                return this._buildSession(user);
-            }
-            return null;
-        }
-
-        // 3) auth_id 동기화
-        if (data.user && !user.auth_id) {
-            await DB.update('users', user.id, { auth_id: data.user.id });
-        }
-
-        return this._buildSession(user, data.user?.id);
+        return this._buildSession(user);
     },
 
     _buildSession(user, authId) {
