@@ -320,15 +320,28 @@ const SettlementPage = {
         return rows.join('');
     },
 
+    _filterByBranch(list, myStaff, isAdmin) {
+        if (isAdmin || !myStaff || !myStaff.branch_name) return list;
+        return list.filter(item => item.branch_name === myStaff.branch_name);
+    },
+
+    _filterGirlsByBranch(girlsList, staff, myStaff, isAdmin) {
+        if (isAdmin || !myStaff || !myStaff.branch_name) return girlsList;
+        const branchStaffIds = staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id);
+        return girlsList.filter(g => !g.staff_id || branchStaffIds.includes(g.staff_id));
+    },
+
     // ═══ 룸 기반 정산 입력 폼 ═══
     async renderForm(container) {
         const isAdmin = Auth.isAdmin();
-        const staff = await DB.getAll('staff');
+        const allStaff = await DB.getAll('staff');
         const liquors = await DB.getAll('liquor');
-        const girlsList = (await DB.getAll('girls')).filter(g => g.active);
+        const allGirls = (await DB.getAll('girls')).filter(g => g.active);
         const today = Format.today();
         const myStaffId = await Auth.getStaffId();
-        const myStaff = staff.find(s => s.id === myStaffId);
+        const myStaff = allStaff.find(s => s.id === myStaffId);
+        const staff = this._filterByBranch(allStaff, myStaff, isAdmin);
+        const girlsList = this._filterGirlsByBranch(allGirls, allStaff, myStaff, isAdmin);
         const tcUnit = await this._getTcUnit();
         this.roomCounter = 0;
 
@@ -536,9 +549,14 @@ const SettlementPage = {
     },
 
     async _addRoom() {
-        const staff = await DB.getAll('staff');
+        const isAdmin = Auth.isAdmin();
+        const allStaff = await DB.getAll('staff');
         const liquors = await DB.getAll('liquor');
-        const girlsList = (await DB.getAll('girls')).filter(g => g.active);
+        const allGirls = (await DB.getAll('girls')).filter(g => g.active);
+        const myStaffId = await Auth.getStaffId();
+        const myStaff = allStaff.find(s => s.id === myStaffId);
+        const staff = this._filterByBranch(allStaff, myStaff, isAdmin);
+        const girlsList = this._filterGirlsByBranch(allGirls, allStaff, myStaff, isAdmin);
         const idx = this.roomCounter++;
         const roomsEl = document.getElementById('rooms-container');
         if (!roomsEl) return;
