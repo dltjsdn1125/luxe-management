@@ -393,7 +393,7 @@ const SettlementPage = {
                         ${staff.filter(s => s.role !== 'staff').map(s => `
                         <div class="flex items-center justify-between wari-row" data-wari-type="staff">
                             <span class="text-sm">${s.name} <span class="text-[10px] text-slate-500">${s.incentive_rate}%</span></span>
-                            <input class="w-28 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono text-right wari-amount amount-input" data-staff="${s.id}" placeholder="0"/>
+                            <input class="w-20 sm:w-28 shrink-0 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono text-right wari-amount amount-input" data-staff="${s.id}" placeholder="0"/>
                         </div>`).join('')}
                     </div>
                     <p class="text-[10px] text-slate-600 mt-3 mb-2 pt-3 border-t border-slate-800">아가씨</p>
@@ -401,7 +401,7 @@ const SettlementPage = {
                         ${girlsList.map(g => `
                         <div class="flex items-center justify-between wari-row" data-wari-type="girl">
                             <span class="text-sm text-pink-400">${g.name} <span class="text-[10px] text-slate-500">${g.incentive_rate || 0}%</span></span>
-                            <input class="w-28 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono text-right wari-girl-amount amount-input" data-girl="${g.id}" placeholder="0"/>
+                            <input class="w-20 sm:w-28 shrink-0 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono text-right wari-girl-amount amount-input" data-girl="${g.id}" placeholder="0"/>
                         </div>`).join('')}
                     </div>
                 </div>
@@ -436,9 +436,9 @@ const SettlementPage = {
                         <button id="btn-add-expense" class="text-[10px] text-blue-500 font-bold">+ 추가</button>
                     </div>
                     <div id="expense-items" class="space-y-2">
-                        <div class="flex gap-2 expense-row">
-                            <input class="flex-1 bg-slate-800 border-slate-700 rounded-lg text-sm expense-name" placeholder="항목명"/>
-                            <input class="w-28 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono expense-amount amount-input" placeholder="금액"/>
+                        <div class="flex gap-2 expense-row min-w-0">
+                            <input class="flex-1 min-w-0 bg-slate-800 border-slate-700 rounded-lg text-sm expense-name" placeholder="항목명"/>
+                            <input class="w-20 sm:w-28 shrink-0 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono expense-amount amount-input" placeholder="금액"/>
                         </div>
                     </div>
                 </div>
@@ -602,9 +602,9 @@ const SettlementPage = {
 
         document.getElementById('btn-add-expense').addEventListener('click', () => {
             const row = document.createElement('div');
-            row.className = 'flex gap-2 expense-row';
-            row.innerHTML = `<input class="flex-1 bg-slate-800 border-slate-700 rounded-lg text-sm expense-name" placeholder="항목명"/>
-                <input class="w-28 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono expense-amount amount-input" placeholder="금액"/>`;
+            row.className = 'flex gap-2 expense-row min-w-0';
+            row.innerHTML = `<input class="flex-1 min-w-0 bg-slate-800 border-slate-700 rounded-lg text-sm expense-name" placeholder="항목명"/>
+                <input class="w-20 sm:w-28 shrink-0 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono expense-amount amount-input" placeholder="금액"/>`;
             document.getElementById('expense-items').appendChild(row);
         });
 
