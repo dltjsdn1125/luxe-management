@@ -27,16 +27,16 @@ const App = {
 
         this._realtimeDebounce = null;
         DB.subscribe(() => {
+            if (this._isEditingForm()) return;
             if (this.currentPage && this.currentPage !== 'login') {
                 clearTimeout(this._realtimeDebounce);
                 this._realtimeDebounce = setTimeout(() => {
-                    this.renderPage(this.currentPage, { silent: true });
+                    if (!this._isEditingForm()) {
+                        this.renderPage(this.currentPage, { silent: true });
+                    }
                 }, 500);
             }
         });
-
-        this._autoRefreshInterval = null;
-        this._startAutoRefresh();
 
         // 초기 라우팅
         if (!window.location.hash || window.location.hash === '#/') {
@@ -172,13 +172,15 @@ const App = {
         }
     },
 
+    _isEditingForm() {
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA')) return true;
+        if (document.getElementById('rooms-container')) return true;
+        if (document.querySelector('.modal-backdrop:not(.hidden)')) return true;
+        return false;
+    },
+
     _startAutoRefresh() {
-        DB.stopAutoRefresh(this._autoRefreshInterval);
-        this._autoRefreshInterval = DB.startAutoRefresh(async () => {
-            if (this.currentPage && this.currentPage !== 'login' && Auth.isLoggedIn()) {
-                await this.renderPage(this.currentPage, { silent: true });
-            }
-        }, 30000);
     },
 
     async refreshCurrentPage() {
