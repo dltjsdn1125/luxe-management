@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Vanguard Elite | Venue Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b6cee",
+                        "accent-gold": "#d4af37",
+                        "accent-purple": "#9d50bb",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0a0c10",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(28, 31, 39, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .neon-glow-purple {
+            box-shadow: 0 0 15px rgba(157, 80, 187, 0.3);
+        }
+        .hero-gradient {
+            background: radial-gradient(circle at 20% 30%, rgba(43, 108, 238, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 70%, rgba(157, 80, 187, 0.1) 0%, transparent 50%);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 selection:bg-primary/30">
+<div class="relative min-h-screen w-full flex flex-col overflow-x-hidden hero-gradient">
+<!-- Navigation -->
+<header class="flex items-center justify-between px-6 lg:px-20 py-6 border-b border-slate-800/50 bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<div class="bg-gradient-to-br from-primary to-accent-purple p-2 rounded-lg">
+<span class="material-symbols-outlined text-white text-2xl">diamond</span>
+</div>
+<h2 class="text-xl font-extrabold tracking-tight text-white uppercase italic">Vanguard<span class="text-primary">Elite</span></h2>
+</div>
+<nav class="hidden md:flex items-center gap-10">
+<a class="text-slate-400 hover:text-white text-sm font-semibold transition-colors" href="#">Features</a>
+<a class="text-slate-400 hover:text-white text-sm font-semibold transition-colors" href="#">Solutions</a>
+<a class="text-slate-400 hover:text-white text-sm font-semibold transition-colors" href="#">Analytics</a>
+<a class="text-slate-400 hover:text-white text-sm font-semibold transition-colors" href="#">Security</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="hidden sm:block text-slate-300 hover:text-white text-sm font-bold px-4 py-2 transition-all">Support</button>
+<button class="bg-primary hover:bg-primary/90 text-white text-sm font-bold px-6 py-2.5 rounded-lg transition-all shadow-lg shadow-primary/20">
+                    Get Started
+                </button>
+</div>
+</header>
+<!-- Hero Section -->
+<main class="flex-grow flex flex-col items-center justify-center px-6 lg:px-20 py-12 lg:py-24">
+<div class="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+<!-- Hero Content -->
+<div class="space-y-8">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold tracking-widest uppercase">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+                        Next-Gen Venue OS
+                    </div>
+<h1 class="text-5xl lg:text-7xl font-black leading-[1.1] tracking-tight text-white">
+                        The Future of <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent-purple">Venue Management</span>
+</h1>
+<p class="text-slate-400 text-lg lg:text-xl leading-relaxed max-w-xl">
+                        Experience the most advanced integrated system for high-end nightclubs and luxury lounges. Master settlements, staff ROI, and elite credit cycles in one unified cockpit.
+                    </p>
+<div class="flex flex-wrap gap-4 pt-4">
+<div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/40 border border-slate-700/50">
+<span class="material-symbols-outlined text-accent-gold">verified</span>
+<span class="text-sm font-medium text-slate-300">PCI-DSS Level 1</span>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/40 border border-slate-700/50">
+<span class="material-symbols-outlined text-accent-purple">bolt</span>
+<span class="text-sm font-medium text-slate-300">Real-time Syncing</span>
+</div>
+</div>
+</div>
+<!-- Secure Login Card -->
+<div class="relative">
+<div class="absolute -inset-1 bg-gradient-to-r from-primary/30 to-accent-purple/30 rounded-2xl blur-2xl opacity-50"></div>
+<div class="relative glass-card p-8 lg:p-10 rounded-2xl shadow-2xl">
+<div class="mb-8">
+<h3 class="text-2xl font-bold text-white mb-2">Partner Portal</h3>
+<p class="text-slate-400 text-sm">Access your management dashboard</p>
+</div>
+<form class="space-y-6">
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Manager ID</label>
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-slate-500 group-focus-within:text-primary transition-colors">person</span>
+</div>
+<input class="w-full bg-slate-900/50 border border-slate-700 focus:border-primary focus:ring-1 focus:ring-primary/50 rounded-xl py-4 pl-12 pr-4 text-white placeholder:text-slate-600 outline-none transition-all" placeholder="VGE-8829-X" type="text"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Secure Password</label>
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-slate-500 group-focus-within:text-primary transition-colors">lock</span>
+</div>
+<input class="w-full bg-slate-900/50 border border-slate-700 focus:border-primary focus:ring-1 focus:ring-primary/50 rounded-xl py-4 pl-12 pr-12 text-white placeholder:text-slate-600 outline-none transition-all" placeholder="••••••••" type="password"/>
+<button class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-slate-300" type="button">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+<div class="flex items-center justify-between py-2">
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="relative">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:bg-primary transition-all"></div>
+<div class="absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
+</div>
+<span class="text-sm font-medium text-slate-400 group-hover:text-slate-200 transition-colors">Stay Signed In</span>
+</label>
+<a class="text-sm font-semibold text-primary hover:text-primary/80 transition-colors" href="#">Forgot Access?</a>
+</div>
+<button class="w-full py-4 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 group">
+                                Authenticate
+                                <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</form>
+<div class="mt-8 pt-8 border-t border-slate-700/50 text-center">
+<p class="text-xs text-slate-500 uppercase tracking-[0.2em]">Authorized Personnel Only</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Feature Highlight Cards -->
+<div class="max-w-7xl w-full grid grid-cols-1 md:grid-cols-3 gap-8 mt-24 lg:mt-32">
+<!-- Card 1 -->
+<div class="group relative p-8 rounded-2xl bg-slate-900/30 border border-slate-800 hover:border-primary/50 transition-all hover:-translate-y-2 overflow-hidden">
+<div class="absolute -right-8 -bottom-8 text-primary/5 group-hover:text-primary/10 transition-colors">
+<span class="material-symbols-outlined text-[140px]">account_balance_wallet</span>
+</div>
+<div class="relative z-10">
+<div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-primary">payments</span>
+</div>
+<h4 class="text-xl font-bold text-white mb-3 tracking-tight">Real-time Settlement</h4>
+<p class="text-slate-400 leading-relaxed text-sm">
+                            Instant end-of-night closings with zero discrepancy margin. Automated revenue splitting for promoters and staff.
+                        </p>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="group relative p-8 rounded-2xl bg-slate-900/30 border border-slate-800 hover:border-accent-purple/50 transition-all hover:-translate-y-2 overflow-hidden">
+<div class="absolute -right-8 -bottom-8 text-accent-purple/5 group-hover:text-accent-purple/10 transition-colors">
+<span class="material-symbols-outlined text-[140px]">credit_card</span>
+</div>
+<div class="relative z-10">
+<div class="w-12 h-12 rounded-xl bg-accent-purple/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-accent-purple">credit_score</span>
+</div>
+<h4 class="text-xl font-bold text-white mb-3 tracking-tight">Credit Tracking</h4>
+<p class="text-slate-400 leading-relaxed text-sm">
+                            Sophisticated credit cycle management for VIP clients. Set limits, track repayments, and manage risk with AI analytics.
+                        </p>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="group relative p-8 rounded-2xl bg-slate-900/30 border border-slate-800 hover:border-accent-gold/50 transition-all hover:-translate-y-2 overflow-hidden">
+<div class="absolute -right-8 -bottom-8 text-accent-gold/5 group-hover:text-accent-gold/10 transition-colors">
+<span class="material-symbols-outlined text-[140px]">trending_up</span>
+</div>
+<div class="relative z-10">
+<div class="w-12 h-12 rounded-xl bg-accent-gold/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-accent-gold">monitoring</span>
+</div>
+<h4 class="text-xl font-bold text-white mb-3 tracking-tight">Staff Performance</h4>
+<p class="text-slate-400 leading-relaxed text-sm">
+                            Granular data on server upsells, bartender speed, and security efficiency. Gamify performance with digital leaderboards.
+                        </p>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="px-6 lg:px-20 py-10 border-t border-slate-800 bg-background-dark/50">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-2 opacity-50 grayscale">
+<span class="material-symbols-outlined text-white">diamond</span>
+<span class="text-white font-bold text-sm tracking-widest uppercase">Vanguard Elite</span>
+</div>
+<div class="text-slate-500 text-xs font-medium uppercase tracking-[0.1em]">
+                    © 2024 Vanguard Systems Group. All Rights Reserved.
+                </div>
+<div class="flex gap-8">
+<a class="text-slate-500 hover:text-primary text-xs font-bold transition-colors" href="#">Privacy</a>
+<a class="text-slate-500 hover:text-primary text-xs font-bold transition-colors" href="#">Terms</a>
+<a class="text-slate-500 hover:text-primary text-xs font-bold transition-colors" href="#">Contact</a>
+</div>
+</div>
+</footer>
+</div>
+</body></html>

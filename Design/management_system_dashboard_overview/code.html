@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Luxe Entertainment - Management Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:wght@700&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#D4AF37", // Elegant Gold
+                        "background-light": "#F8F9FA",
+                        "background-dark": "#0B0E14",
+                        "surface-dark": "#161B22",
+                        "accent-neon": "#00F2FF",
+                    },
+                    fontFamily: {
+                        sans: ["Inter", "sans-serif"],
+                        display: ["Playfair Display", "serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.5rem",
+                    },
+                },
+            },
+        };
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .gold-gradient {
+            background: linear-gradient(135deg, #D4AF37 0%, #F1D27B 50%, #D4AF37 100%);
+        }
+        .neon-glow {
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+        }
+        .chart-bar {
+            transition: height 1s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 transition-colors duration-200">
+<div class="flex h-screen overflow-hidden">
+<aside class="w-64 flex-shrink-0 bg-white dark:bg-surface-dark border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col">
+<div class="p-6">
+<div class="flex items-center space-x-3 mb-10">
+<div class="w-10 h-10 gold-gradient rounded-lg flex items-center justify-center text-white">
+<span class="material-icons">nightlight_round</span>
+</div>
+<h1 class="font-display text-xl font-bold tracking-tight text-primary">LUXE CMS</h1>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-primary/10 text-primary border-r-4 border-primary" href="#">
+<span class="material-icons mr-3">dashboard</span> Settlement
+                    </a>
+<a class="flex items-center px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-icons mr-3">groups</span> Staff Management
+                    </a>
+<a class="flex items-center px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-icons mr-3">woman</span> Ladies Registry
+                    </a>
+<a class="flex items-center px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-icons mr-3">liquor</span> Liquor Inventory
+                    </a>
+<a class="flex items-center px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-icons mr-3">account_balance_wallet</span> Credit Management
+                    </a>
+<a class="flex items-center px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-icons mr-3">receipt_long</span> Expenses
+                    </a>
+<a class="flex items-center px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-icons mr-3">analytics</span> Statistics
+                    </a>
+</nav>
+</div>
+<div class="mt-auto p-6 border-t border-slate-200 dark:border-slate-800">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+<img alt="Admin user avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWdcsgnIx2bhUQWOkDO32VtJ3r0LJ0q0J17mVuC6MGFon2GaaJjWMBuC0PtZQ0OMWetBMk7ZcSHnsFrWbbTyL_4rqwDkV5Tcjdk3H7lH5Fr1vdjORMCm1st08JQYDSa2_3q8qjodXnc0s7PUBMapuJGz8UT191cmuO_p33-G0ahu5v93SslTJdqmMkP7xUtpQKbZ00j6ocur50k1E2AkKpnJNPgVOpHeTARmKR3jVSBXETsmyHkjRyn3vBtqB8VWLjXykErcccX2U"/>
+</div>
+<div>
+<p class="text-xs font-semibold">Admin Executive</p>
+<p class="text-[10px] text-slate-500">Night Shift</p>
+</div>
+</div>
+</div>
+</aside>
+<main class="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark p-6 md:p-10">
+<header class="flex justify-between items-center mb-10">
+<div>
+<h2 class="text-3xl font-display font-bold text-slate-800 dark:text-white">Daily Settlement Overview</h2>
+<p class="text-slate-500 text-sm mt-1">Thursday, February 26, 2026</p>
+</div>
+<div class="flex items-center space-x-4">
+<button class="flex items-center px-4 py-2 bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span class="material-icons text-sm mr-2">calendar_today</span> Select Date
+                    </button>
+<button class="gold-gradient text-white px-5 py-2 rounded-lg text-sm font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
+                        EXPORT REPORT
+                    </button>
+</div>
+</header>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+<div class="bg-white dark:bg-surface-dark p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-emerald-500/10 rounded-lg text-emerald-500">
+<span class="material-icons">payments</span>
+</div>
+<span class="text-emerald-500 text-xs font-bold">+12.5%</span>
+</div>
+<p class="text-slate-500 text-xs uppercase tracking-wider font-semibold">Total Revenue</p>
+<h3 class="text-2xl font-bold mt-1 tracking-tight">₩46,500,000</h3>
+</div>
+<div class="bg-white dark:bg-surface-dark p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-rose-500/10 rounded-lg text-rose-500">
+<span class="material-icons">shopping_cart</span>
+</div>
+<span class="text-rose-500 text-xs font-bold">+3.2%</span>
+</div>
+<p class="text-slate-500 text-xs uppercase tracking-wider font-semibold">Total Expenses</p>
+<h3 class="text-2xl font-bold mt-1 tracking-tight">₩12,450,000</h3>
+</div>
+<div class="bg-white dark:bg-surface-dark p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-icons">monetization_on</span>
+</div>
+<span class="text-emerald-500 text-xs font-bold">+8.1%</span>
+</div>
+<p class="text-slate-500 text-xs uppercase tracking-wider font-semibold">Net Profit</p>
+<h3 class="text-2xl font-bold mt-1 tracking-tight text-primary">₩34,050,000</h3>
+</div>
+<div class="bg-white dark:bg-surface-dark p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-amber-500/10 rounded-lg text-amber-500">
+<span class="material-icons">credit_card</span>
+</div>
+<span class="text-slate-500 text-xs font-bold">Outstanding</span>
+</div>
+<p class="text-slate-500 text-xs uppercase tracking-wider font-semibold">Credit Balance</p>
+<h3 class="text-2xl font-bold mt-1 tracking-tight text-amber-500">₩21,000,000</h3>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+<div class="lg:col-span-2 bg-white dark:bg-surface-dark p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-center mb-8">
+<h4 class="font-bold text-lg">Monthly Revenue vs. Expense</h4>
+<div class="flex space-x-4">
+<div class="flex items-center text-xs text-slate-500">
+<span class="w-3 h-3 rounded-full bg-primary mr-2"></span> Revenue
+                            </div>
+<div class="flex items-center text-xs text-slate-500">
+<span class="w-3 h-3 rounded-full bg-slate-600 mr-2"></span> Expense
+                            </div>
+</div>
+</div>
+<div class="h-64 flex items-end justify-between space-x-2 px-2">
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full flex justify-center space-x-1 items-end h-full">
+<div class="w-4 bg-slate-600 rounded-t-sm h-[20%]"></div>
+<div class="w-4 bg-primary rounded-t-sm h-[40%]"></div>
+</div>
+<span class="text-[10px] mt-2 text-slate-500">Week 1</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full flex justify-center space-x-1 items-end h-full">
+<div class="w-4 bg-slate-600 rounded-t-sm h-[30%]"></div>
+<div class="w-4 bg-primary rounded-t-sm h-[55%]"></div>
+</div>
+<span class="text-[10px] mt-2 text-slate-500">Week 2</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full flex justify-center space-x-1 items-end h-full">
+<div class="w-4 bg-slate-600 rounded-t-sm h-[25%]"></div>
+<div class="w-4 bg-primary rounded-t-sm h-[65%]"></div>
+</div>
+<span class="text-[10px] mt-2 text-slate-500">Week 3</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full flex justify-center space-x-1 items-end h-full">
+<div class="w-4 bg-slate-600 rounded-t-sm h-[40%]"></div>
+<div class="w-4 bg-primary rounded-t-sm h-[85%]"></div>
+</div>
+<span class="text-[10px] mt-2 text-slate-500">Week 4</span>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-surface-dark p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+<h4 class="font-bold text-lg mb-8">Liquor Sales Mix</h4>
+<div class="flex-1 flex flex-col justify-center items-center">
+<div class="relative w-40 h-40">
+<svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+<circle cx="18" cy="18" fill="none" r="15.915" stroke="#252F3F" stroke-width="3"></circle>
+<circle cx="18" cy="18" fill="none" r="15.915" stroke="#D4AF37" stroke-dasharray="70 30" stroke-dashoffset="25" stroke-width="3"></circle>
+<circle cx="18" cy="18" fill="none" r="15.915" stroke="#00F2FF" stroke-dasharray="15 85" stroke-dashoffset="0" stroke-width="3"></circle>
+<circle cx="18" cy="18" fill="none" r="15.915" stroke="#94A3B8" stroke-dasharray="10 90" stroke-dashoffset="-15" stroke-width="3"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-2xl font-bold">100%</span>
+<span class="text-[10px] text-slate-500">Total Sales</span>
+</div>
+</div>
+<div class="mt-8 grid grid-cols-2 gap-x-6 gap-y-2 w-full">
+<div class="flex items-center text-xs">
+<span class="w-2 h-2 rounded-full bg-primary mr-2"></span> Whiskey (70%)
+                            </div>
+<div class="flex items-center text-xs">
+<span class="w-2 h-2 rounded-full bg-accent-neon mr-2"></span> Champagne (15%)
+                            </div>
+<div class="flex items-center text-xs">
+<span class="w-2 h-2 rounded-full bg-slate-400 mr-2"></span> Wine (10%)
+                            </div>
+<div class="flex items-center text-xs">
+<span class="w-2 h-2 rounded-full bg-slate-700 mr-2"></span> Others (5%)
+                            </div>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+<div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+<h4 class="font-bold text-lg">Room-by-Room Daily Summary</h4>
+<div class="flex items-center space-x-2">
+<span class="text-xs text-slate-500">Filter by:</span>
+<select class="text-xs bg-slate-50 dark:bg-slate-900 border-none rounded-md focus:ring-primary">
+<option>All Rooms</option>
+<option>VIP Section</option>
+<option>Lounge</option>
+</select>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-slate-50 dark:bg-slate-900/50 text-slate-500 text-[11px] uppercase tracking-wider">
+<th class="px-6 py-4 font-semibold">Room Number</th>
+<th class="px-6 py-4 font-semibold">VIP/Staff</th>
+<th class="px-6 py-4 font-semibold">Main Liquor</th>
+<th class="px-6 py-4 font-semibold">T/C (Hours)</th>
+<th class="px-6 py-4 font-semibold">Cash Settled</th>
+<th class="px-6 py-4 font-semibold">Credit/Loan</th>
+<th class="px-6 py-4 font-semibold">Total Amount</th>
+<th class="px-6 py-4 font-semibold">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+<td class="px-6 py-4 text-sm font-bold">Room 1</td>
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-sm">VIP: Mr. Kang</span>
+<span class="text-xs text-slate-500">Staff: Jenny</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm">Macallan 18y (3)</td>
+<td class="px-6 py-4 text-sm">₩450,000</td>
+<td class="px-6 py-4 text-sm">₩1,500,000</td>
+<td class="px-6 py-4 text-sm">₩0</td>
+<td class="px-6 py-4 text-sm font-bold text-primary">₩1,950,000</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded">CLOSED</span>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+<td class="px-6 py-4 text-sm font-bold">Room 4</td>
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-sm">VIP: Mrs. Lee</span>
+<span class="text-xs text-slate-500">Staff: Chloe</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm">Moët Chandon (5)</td>
+<td class="px-6 py-4 text-sm">₩900,000</td>
+<td class="px-6 py-4 text-sm">₩500,000</td>
+<td class="px-6 py-4 text-sm text-amber-500">₩1,200,000</td>
+<td class="px-6 py-4 text-sm font-bold text-primary">₩2,600,000</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-bold rounded">PENDING</span>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+<td class="px-6 py-4 text-sm font-bold">Room 7</td>
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-sm">VIP: Mr. Park</span>
+<span class="text-xs text-slate-500">Staff: Sarah</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm">Hibiki (2)</td>
+<td class="px-6 py-4 text-sm">₩300,000</td>
+<td class="px-6 py-4 text-sm">₩3,500,000</td>
+<td class="px-6 py-4 text-sm">₩0</td>
+<td class="px-6 py-4 text-sm font-bold text-primary">₩3,800,000</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded">CLOSED</span>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+<td class="px-6 py-4 text-sm font-bold">Room 9</td>
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-sm">VIP: Executive Team</span>
+<span class="text-xs text-slate-500">Staff: Grace</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm">Hennessy XO (1)</td>
+<td class="px-6 py-4 text-sm">₩150,000</td>
+<td class="px-6 py-4 text-sm">₩0</td>
+<td class="px-6 py-4 text-sm text-rose-500">₩1,100,000</td>
+<td class="px-6 py-4 text-sm font-bold text-primary">₩1,250,000</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-indigo-500/10 text-indigo-500 text-[10px] font-bold rounded uppercase">In Progress</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 bg-slate-50 dark:bg-slate-900/50 flex justify-center">
+<button class="text-xs font-bold text-primary flex items-center hover:underline">
+                        VIEW ALL 24 ROOMS <span class="material-icons text-sm ml-1">arrow_forward</span>
+</button>
+</div>
+</div>
+</main>
+</div>
+<button class="fixed bottom-6 right-6 w-12 h-12 bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-800 rounded-full shadow-2xl flex items-center justify-center text-slate-800 dark:text-primary transition-all active:scale-95 z-50" onclick="document.documentElement.classList.toggle('dark')">
+<span class="material-icons">dark_mode</span>
+</button>
+<script>
+        // Set dark mode by default for the premium aesthetic
+        document.documentElement.classList.add('dark');
+    </script>
+
+</body></html>

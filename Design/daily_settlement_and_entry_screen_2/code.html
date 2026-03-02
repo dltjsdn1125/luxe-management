@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Credit &amp; Receivables Tracking - LUXE MGMT</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Noto+Sans+KR:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --primary-color: #3b82f6;
+            --bg-dark: #0f172a;
+            --card-dark: #1e293b;
+            --border-dark: #334155;
+        }
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f1f5f9;
+        }
+        .delinquent-glow {
+            box-shadow: inset 0 0 10px rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4) !important;
+        }
+        .scroll-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3b82f6",
+                    },
+                },
+            },
+        };
+    </script>
+</head>
+<body class="min-h-screen">
+<header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+<div class="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-3xl">account_balance_wallet</span>
+<span class="font-bold text-xl tracking-tight text-white">LUXE MGMT</span>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-medium text-slate-400 hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-sm font-medium text-slate-400 hover:text-primary transition-colors" href="#">Daily Settlement</a>
+<a class="text-sm font-medium text-primary border-b-2 border-primary pb-5 mt-5" href="#">Credit Management</a>
+<a class="text-sm font-medium text-slate-400 hover:text-primary transition-colors" href="#">Staff Performance</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-slate-400">notifications</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs">AD</div>
+</div>
+</div>
+</header>
+<main class="max-w-[1600px] mx-auto p-6 space-y-8">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div>
+<h1 class="text-2xl font-bold text-white">Credit &amp; Receivables (외상 관리)</h1>
+<p class="text-slate-400 text-sm">Monitor outstanding balances and collection performance.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined text-sm">download</span> Export Report
+                </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors">
+<span class="material-symbols-outlined text-sm">add</span> New Credit Entry
+                </button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<span class="p-2 bg-blue-500/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">payments</span>
+</span>
+<span class="text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">+2.4% vs LW</span>
+</div>
+<h3 class="text-slate-400 text-sm font-medium">Total Outstanding Credit</h3>
+<div class="text-3xl font-bold text-white mt-1">₩42,850,000</div>
+</div>
+<div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<span class="p-2 bg-emerald-500/10 rounded-lg text-emerald-400">
+<span class="material-symbols-outlined">account_balance</span>
+</span>
+<span class="text-xs font-medium text-slate-400">Current Month</span>
+</div>
+<h3 class="text-slate-400 text-sm font-medium">Amount Collected This Month</h3>
+<div class="text-3xl font-bold text-white mt-1">₩18,200,000</div>
+</div>
+<div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<span class="p-2 bg-red-500/10 rounded-lg text-red-400">
+<span class="material-symbols-outlined">warning</span>
+</span>
+<span class="text-xs font-medium text-red-400">High Priority</span>
+</div>
+<h3 class="text-slate-400 text-sm font-medium">Delinquent Accounts</h3>
+<div class="text-3xl font-bold text-white mt-1">14 <span class="text-sm font-normal text-slate-500 tracking-normal ml-1">entries</span></div>
+</div>
+</div>
+<div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-wrap gap-4 items-center justify-between">
+<div class="flex flex-wrap gap-4 flex-1">
+<div class="relative min-w-[300px]">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
+<input class="w-full pl-10 bg-slate-800 border-slate-700 rounded-lg text-sm focus:ring-primary focus:border-primary text-slate-200" placeholder="Search customer or staff name..." type="text"/>
+</div>
+<select class="bg-slate-800 border-slate-700 rounded-lg text-sm text-slate-200 focus:ring-primary">
+<option>All Responsible Staff</option>
+<option>Manager Kim</option>
+<option>Manager Lee</option>
+<option>Staff Park</option>
+</select>
+<div class="flex items-center gap-2">
+<input class="bg-slate-800 border-slate-700 rounded-lg text-sm text-slate-200 focus:ring-primary" type="date"/>
+<span class="text-slate-500 text-sm">~</span>
+<input class="bg-slate-800 border-slate-700 rounded-lg text-sm text-slate-200 focus:ring-primary" type="date"/>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+<button class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
+<span class="material-symbols-outlined">refresh</span>
+</button>
+</div>
+</div>
+<div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm whitespace-nowrap">
+<thead>
+<tr class="bg-slate-800/50 border-b border-slate-700">
+<th class="px-6 py-4 font-semibold text-slate-300">Entry Date</th>
+<th class="px-6 py-4 font-semibold text-slate-300">Responsible Staff</th>
+<th class="px-6 py-4 font-semibold text-slate-300">Customer Name</th>
+<th class="px-6 py-4 font-semibold text-slate-300">Amount (KRW)</th>
+<th class="px-6 py-4 font-semibold text-slate-300">Due Date</th>
+<th class="px-6 py-4 font-semibold text-slate-300">Status</th>
+<th class="px-6 py-4 font-semibold text-slate-300 text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-800">
+<tr class="hover:bg-slate-800/30 transition-colors delinquent-glow">
+<td class="px-6 py-4 text-slate-400 font-mono">2024-02-15</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="h-6 w-6 rounded-full bg-red-400/20 text-red-400 text-[10px] flex items-center justify-center font-bold">MK</div>
+<span class="text-slate-200">Manager Kim</span>
+</div>
+</td>
+<td class="px-6 py-4 font-medium text-white">Chun-ho Park</td>
+<td class="px-6 py-4 font-mono text-white">5,400,000</td>
+<td class="px-6 py-4 text-red-400 font-mono flex items-center gap-1">
+                                2024-02-22
+                                <span class="material-symbols-outlined text-xs">priority_high</span>
+</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-red-500/10 text-red-400 text-xs font-bold rounded border border-red-500/20">UNPAID</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary hover:underline text-xs font-bold">Details</button>
+</td>
+</tr>
+<tr class="hover:bg-slate-800/30 transition-colors">
+<td class="px-6 py-4 text-slate-400 font-mono">2024-02-20</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="h-6 w-6 rounded-full bg-blue-400/20 text-blue-400 text-[10px] flex items-center justify-center font-bold">ML</div>
+<span class="text-slate-200">Manager Lee</span>
+</div>
+</td>
+<td class="px-6 py-4 font-medium text-white">Jung-woo Lee</td>
+<td class="px-6 py-4 font-mono text-white">2,100,000</td>
+<td class="px-6 py-4 text-slate-400 font-mono">2024-02-27</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-amber-500/10 text-amber-400 text-xs font-bold rounded border border-amber-500/20">PARTIAL (₩1.1M)</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary hover:underline text-xs font-bold">Details</button>
+</td>
+</tr>
+<tr class="hover:bg-slate-800/30 transition-colors">
+<td class="px-6 py-4 text-slate-400 font-mono">2024-02-22</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="h-6 w-6 rounded-full bg-emerald-400/20 text-emerald-400 text-[10px] flex items-center justify-center font-bold">SP</div>
+<span class="text-slate-200">Staff Park</span>
+</div>
+</td>
+<td class="px-6 py-4 font-medium text-white">Hye-in Kim</td>
+<td class="px-6 py-4 font-mono text-white">1,250,000</td>
+<td class="px-6 py-4 text-slate-400 font-mono">2024-02-25</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded border border-emerald-500/20">PAID</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary hover:underline text-xs font-bold">Details</button>
+</td>
+</tr>
+<tr class="hover:bg-slate-800/30 transition-colors">
+<td class="px-6 py-4 text-slate-400 font-mono">2024-02-24</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="h-6 w-6 rounded-full bg-red-400/20 text-red-400 text-[10px] flex items-center justify-center font-bold">MK</div>
+<span class="text-slate-200">Manager Kim</span>
+</div>
+</td>
+<td class="px-6 py-4 font-medium text-white">Min-ho Choi</td>
+<td class="px-6 py-4 font-mono text-white">3,800,000</td>
+<td class="px-6 py-4 text-slate-400 font-mono">2024-03-02</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-slate-700/50 text-slate-400 text-xs font-bold rounded border border-slate-600">UNPAID</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary hover:underline text-xs font-bold">Details</button>
+</td>
+</tr>
+<tr class="hover:bg-slate-800/30 transition-colors delinquent-glow">
+<td class="px-6 py-4 text-slate-400 font-mono">2024-02-10</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="h-6 w-6 rounded-full bg-purple-400/20 text-purple-400 text-[10px] flex items-center justify-center font-bold">SY</div>
+<span class="text-slate-200">Staff Yoo</span>
+</div>
+</td>
+<td class="px-6 py-4 font-medium text-white">Seung-hun Oh</td>
+<td class="px-6 py-4 font-mono text-white">8,200,000</td>
+<td class="px-6 py-4 text-red-400 font-mono flex items-center gap-1">
+                                2024-02-17
+                                <span class="material-symbols-outlined text-xs">priority_high</span>
+</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-red-500/10 text-red-400 text-xs font-bold rounded border border-red-500/20">UNPAID</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary hover:underline text-xs font-bold">Details</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-4 border-t border-slate-800 flex items-center justify-between bg-slate-900/50">
+<span class="text-xs text-slate-500 font-medium">Showing 5 of 124 entries</span>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-50" disabled="">Previous</button>
+<button class="px-3 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-slate-300 hover:bg-slate-700">Next</button>
+</div>
+</div>
+</div>
+</main>
+<footer class="mt-20 py-8 border-t border-slate-800">
+<div class="max-w-[1600px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+<div class="text-slate-500 text-xs text-center md:text-left">
+                © 2024 LUXE Entertainment Management System. All Rights Reserved.
+            </div>
+<div class="flex gap-6">
+<a class="text-xs text-slate-500 hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="text-xs text-slate-500 hover:text-primary transition-colors" href="#">Audit Logs</a>
+<a class="text-xs text-slate-500 hover:text-primary transition-colors" href="#">Support</a>
+</div>
+</div>
+</footer>
+
+</body></html>

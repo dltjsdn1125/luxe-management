@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html class="dark" lang="ko">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <title>LUXE MGMT - 통합 영업관리 시스템</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+    <link href="css/app.css?v=38" rel="stylesheet"/>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3b82f6",
+                        "background-dark": "#0f172a",
+                        "surface-dark": "#161B22",
+                        "accent-gold": "#FDE68A",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "Noto Sans KR", "sans-serif"],
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        @media print {
+            #app-header, #app-sidebar, #app-footer, #toast-container { display: none !important; }
+            #main-wrapper { margin-left: 0 !important; }
+            body { background: white !important; color: black !important; }
+        }
+    </style>
+</head>
+<body class="bg-background-dark font-display text-slate-100 min-h-screen">
+
+    <!-- Header -->
+    <header id="app-header" class="hidden border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-full mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center justify-between">
+            <div class="flex items-center gap-4 md:gap-8">
+                <!-- 모바일 메뉴 토글 -->
+                <button id="btn-mobile-menu" class="md:hidden p-1.5 rounded-lg hover:bg-slate-800">
+                    <span class="material-symbols-outlined text-slate-400">menu</span>
+                </button>
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-blue-500 text-2xl md:text-3xl">diamond</span>
+                    <span class="font-bold text-lg md:text-xl tracking-tight">LUXE MGMT</span>
+                </div>
+                <nav class="hidden md:flex items-center gap-6">
+                    <a data-page="dashboard" class="text-sm font-medium text-slate-400 hover:text-blue-500 transition-colors cursor-pointer">대시보드</a>
+                    <a data-page="settlement" class="text-sm font-medium text-slate-400 hover:text-blue-500 transition-colors cursor-pointer">일일정산</a>
+                    <a data-page="staff" class="text-sm font-medium text-slate-400 hover:text-blue-500 transition-colors cursor-pointer">직원관리</a>
+                    <a data-page="inventory" class="text-sm font-medium text-slate-400 hover:text-blue-500 transition-colors cursor-pointer">주류관리</a>
+                </nav>
+            </div>
+            <div class="flex items-center gap-2 md:gap-3">
+                <span id="user-name" class="hidden"></span>
+                <span id="user-role" class="hidden"></span>
+                <button id="btn-logout" class="p-2 rounded-lg hover:bg-slate-800 transition-colors" title="로그아웃">
+                    <span class="material-symbols-outlined text-slate-400 text-xl">logout</span>
+                </button>
+                <div id="user-avatar" class="h-9 w-9 rounded-lg bg-blue-500 flex items-center justify-center text-white cursor-pointer" title="">
+                    <span class="material-symbols-outlined text-lg">person</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside id="app-sidebar" class="hidden fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 transform -translate-x-full md:translate-x-0 transition-transform duration-200 flex-col pt-16 md:pt-16">
+        <div class="p-4 md:p-6 flex-1 overflow-y-auto custom-scrollbar">
+            <nav class="space-y-1">
+                <a data-page="dashboard" class="flex items-center px-4 py-3 text-sm font-medium text-slate-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
+                    <span class="material-symbols-outlined mr-3 text-xl">dashboard</span> 대시보드
+                </a>
+                <a data-page="settlement" class="flex items-center px-4 py-3 text-sm font-medium text-slate-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
+                    <span class="material-symbols-outlined mr-3 text-xl">receipt_long</span> 일일정산
+                </a>
+                <a data-page="staff" class="flex items-center px-4 py-3 text-sm font-medium text-slate-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
+                    <span class="material-symbols-outlined mr-3 text-xl">groups</span> 직원관리
+                </a>
+                <a data-page="girls" class="flex items-center px-4 py-3 text-sm font-medium text-slate-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
+                    <span class="material-symbols-outlined mr-3 text-xl">woman</span> 아가씨 관리
+                </a>
+                <a data-page="inventory" class="flex items-center px-4 py-3 text-sm font-medium text-slate-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
+                    <span class="material-symbols-outlined mr-3 text-xl">liquor</span> 주류관리
+                </a>
+                <a data-page="credit" class="flex items-center px-4 py-3 text-sm font-medium text-slate-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
+                    <span class="material-symbols-outlined mr-3 text-xl">account_balance_wallet</span> 외상관리
+                </a>
+                <a data-page="expenses" class="flex items-center px-4 py-3 text-sm font-medium text-slate-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
+                    <span class="material-symbols-outlined mr-3 text-xl">shopping_cart</span> 지출관리
+                </a>
+                <div class="my-2 border-t border-slate-800"></div>
+                <a data-page="settings" class="flex items-center px-4 py-3 text-sm font-medium text-slate-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
+                    <span class="material-symbols-outlined mr-3 text-xl">tune</span> 기초설정
+                </a>
+                <a data-page="accounts" class="flex items-center px-4 py-3 text-sm font-medium text-slate-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer admin-only-nav">
+                    <span class="material-symbols-outlined mr-3 text-xl">manage_accounts</span> 계정관리
+                </a>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-800">
+            <p class="text-[10px] text-slate-600 text-center">LUXE MGMT v1.0</p>
+        </div>
+    </aside>
+
+    <!-- 모바일 사이드바 오버레이 -->
+    <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/50 z-30 md:hidden"></div>
+
+    <!-- Main Content -->
+    <div id="main-wrapper">
+        <main id="app-content" class="min-h-screen"></main>
+    </div>
+
+    <!-- Footer -->
+    <footer id="app-footer" class="hidden py-6 md:py-8 border-t border-slate-800/50 md:ml-64">
+        <div class="max-w-[1600px] mx-auto px-4 md:px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-xs">
+            <div>&copy; 2026 LUXE Entertainment Management System.</div>
+        </div>
+    </footer>
+
+    <!-- Modal -->
+    <div id="app-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 modal-backdrop">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div class="flex items-center justify-between p-4 md:p-6 border-b border-slate-800">
+                <h3 id="modal-title" class="font-bold text-lg text-white"></h3>
+                <button id="modal-close" class="p-1 hover:bg-slate-800 rounded-lg"><span class="material-symbols-outlined text-slate-400">close</span></button>
+            </div>
+            <div id="modal-body" class="p-4 md:p-6"></div>
+            <div class="flex gap-3 p-4 md:p-6 border-t border-slate-800">
+                <button id="modal-cancel" class="flex-1 py-2.5 border border-slate-700 rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors">취소</button>
+                <button id="modal-confirm" class="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-bold transition-colors">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-20 right-4 z-[110] flex flex-col items-end"></div>
+
+    <!-- Scripts -->
+    <script src="js/utils/format.js?v=38"></script>
+    <script src="js/utils/period.js?v=38"></script>
+    <script src="js/utils/export.js?v=38"></script>
+    <script src="js/supabase.js?v=39"></script>
+    <script src="js/db.js?v=41"></script>
+    <script src="js/auth.js?v=43"></script>
+    <script src="js/app.js?v=43"></script>
+    <script src="js/pages/login.js?v=38"></script>
+    <script src="js/pages/dashboard.js?v=38"></script>
+    <script src="js/pages/settlement.js?v=38"></script>
+    <script src="js/pages/credit.js?v=38"></script>
+    <script src="js/pages/staff.js?v=38"></script>
+    <script src="js/pages/inventory.js?v=38"></script>
+    <script src="js/pages/girls.js?v=38"></script>
+    <script src="js/pages/expenses.js?v=38"></script>
+    <script src="js/pages/settings.js?v=42"></script>
+    <script src="js/pages/accounts.js?v=38"></script>
+
+    <script>
+        // SPA Navigation
+        document.addEventListener('DOMContentLoaded', () => {
+            // 사이드바 & 헤더 네비게이션
+            document.querySelectorAll('[data-page]').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    App.navigate(link.dataset.page);
+                    // 모바일: 사이드바 닫기
+                    closeMobileSidebar();
+                });
+            });
+
+            // 로그아웃
+            document.getElementById('btn-logout').addEventListener('click', async () => {
+                if (confirm('로그아웃 하시겠습니까?')) {
+                    await Auth.logout();
+                }
+            });
+
+            // 모바일 메뉴
+            document.getElementById('btn-mobile-menu').addEventListener('click', () => {
+                const sidebar = document.getElementById('app-sidebar');
+                const overlay = document.getElementById('sidebar-overlay');
+                sidebar.classList.toggle('-translate-x-full');
+                overlay.classList.toggle('hidden');
+            });
+
+            document.getElementById('sidebar-overlay').addEventListener('click', closeMobileSidebar);
+
+            function closeMobileSidebar() {
+                document.getElementById('app-sidebar').classList.add('-translate-x-full');
+                document.getElementById('sidebar-overlay').classList.add('hidden');
+            }
+
+            // 앱 초기화 (async)
+            App.init().catch(err => console.error('App init error:', err));
+        });
+    </script>
+</body>
+</html>

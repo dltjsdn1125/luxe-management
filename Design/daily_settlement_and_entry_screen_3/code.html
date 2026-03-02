@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Management System - Daily Settlement</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Noto+Sans+KR:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3b82f6",
+                        "background-light": "#f8fafc",
+                        "background-dark": "#0f172a",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "Noto Sans KR", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.5rem",
+                    },
+                },
+            },
+        };
+    </script>
+<style>
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+        }
+        .scroll-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .paper-grid {
+            background-image: linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<header class="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+<div class="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-2">
+<span class="material-icons text-primary text-3xl">analytics</span>
+<span class="font-bold text-xl tracking-tight">LUXE MGMT</span>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-sm font-medium text-primary border-b-2 border-primary pb-5 mt-5" href="#">Daily Settlement</a>
+<a class="text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="#">Staff Management</a>
+<a class="text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="#">Inventory</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-icons text-slate-500">notifications</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs">AD</div>
+</div>
+</div>
+</header>
+<main class="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+<section class="lg:col-span-5 flex flex-col gap-6">
+<div class="flex items-center justify-between">
+<h1 class="text-2xl font-bold">New Settlement</h1>
+<span class="text-slate-500 text-sm">Step 2 of 4: Revenue Details</span>
+</div>
+<div class="space-y-6">
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
+<span class="material-icons text-xs">calendar_today</span> General Info
+                    </h3>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="text-xs font-medium text-slate-400">Target Date</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg focus:ring-primary focus:border-primary" type="date" value="2024-02-26"/>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-medium text-slate-400">Total Active Rooms</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg focus:ring-primary focus:border-primary" placeholder="0" type="number" value="9"/>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+<span class="material-icons text-xs">local_bar</span> Liquor Sales
+                        </h3>
+<button class="text-xs text-primary font-medium">+ Add Item</button>
+</div>
+<div class="space-y-3">
+<div class="flex gap-3">
+<select class="flex-1 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary">
+<option>Diamond Label (Premium)</option>
+<option>Signature Gold</option>
+<option>Vintage Reserve</option>
+<option>House Selection</option>
+</select>
+<input class="w-24 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary" placeholder="Qty" type="number" value="3"/>
+</div>
+<div class="flex gap-3">
+<select class="flex-1 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary">
+<option>Vintage Reserve</option>
+<option>Diamond Label (Premium)</option>
+<option>Signature Gold</option>
+<option selected="">House Selection</option>
+</select>
+<input class="w-24 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary" placeholder="Qty" type="number" value="12"/>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
+<span class="material-icons text-xs">payments</span> Payment Breakdown
+                    </h3>
+<div class="space-y-4">
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="text-xs font-medium text-slate-400">Cash (KRW)</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg font-mono focus:ring-primary" type="text" value="1,250,000"/>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-medium text-slate-400">Card (KRW)</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg font-mono focus:ring-primary" type="text" value="500,000"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-medium text-slate-400">Credit / Receivables</label>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">₩</span>
+<input class="w-full pl-8 bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-900/50 rounded-lg text-red-600 dark:text-red-400 font-mono focus:ring-red-500" type="text" value="2,100,000"/>
+</div>
+</div>
+</div>
+</div>
+<div class="flex gap-4">
+<button class="flex-1 py-3 px-4 border border-slate-200 dark:border-slate-800 rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Back</button>
+<button class="flex-[2] py-3 px-4 bg-primary hover:bg-blue-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/20 transition-all">Review &amp; Post Settlement</button>
+</div>
+</div>
+</section>
+<section class="lg:col-span-7">
+<div class="sticky top-24">
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-lg font-bold flex items-center gap-2">
+<span class="material-icons text-primary">visibility</span>
+                        Live Preview: Settlement Sheet
+                    </h2>
+<div class="flex gap-2">
+<button class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-500 hover:text-primary transition-colors">
+<span class="material-icons text-sm">print</span>
+</button>
+<button class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-500 hover:text-primary transition-colors">
+<span class="material-icons text-sm">download</span>
+</button>
+</div>
+</div>
+<div class="bg-[#1e293b] rounded-2xl p-8 shadow-2xl border border-slate-700/50 relative overflow-hidden">
+<div class="absolute inset-0 paper-grid opacity-20 pointer-events-none"></div>
+<div class="relative z-10">
+<div class="flex justify-between items-start border-b-2 border-slate-600 pb-6 mb-8">
+<div>
+<h3 class="text-3xl font-black tracking-tighter text-white mb-1">2026년 2월 26일 목요일</h3>
+<p class="text-slate-400 text-sm font-medium">DAILY SETTLEMENT REPORT v4.2</p>
+</div>
+<div class="text-right">
+<span class="text-slate-500 text-xs uppercase block font-bold tracking-widest mb-1">Total Revenue</span>
+<span class="text-4xl font-black text-primary tracking-tighter">1,800.000</span>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+<div class="bg-slate-800/50 p-3 border border-slate-700 rounded">
+<div class="flex justify-between text-[10px] font-bold text-slate-500 mb-2 border-b border-slate-700 pb-1">
+<span>[Room: 5] VIP</span>
+<span>담당: 길동</span>
+</div>
+<div class="grid grid-cols-4 gap-1 text-[10px]">
+<div class="col-span-2 text-slate-400">주대</div>
+<div class="col-span-2 text-right text-white">700,000</div>
+<div class="col-span-2 text-slate-400">T/C</div>
+<div class="col-span-2 text-right text-white">350,000</div>
+</div>
+<div class="mt-2 text-right">
+<span class="text-xs font-bold text-primary">1,050,000</span>
+</div>
+</div>
+<div class="bg-slate-800/50 p-3 border border-slate-700 rounded">
+<div class="flex justify-between text-[10px] font-bold text-slate-500 mb-2 border-b border-slate-700 pb-1">
+<span>[Room: 4] VIP</span>
+<span>담당: 지은</span>
+</div>
+<div class="grid grid-cols-4 gap-1 text-[10px]">
+<div class="col-span-2 text-slate-400">주대</div>
+<div class="col-span-2 text-right text-white">400,000</div>
+<div class="col-span-2 text-slate-400">T/C</div>
+<div class="col-span-2 text-right text-white">200,000</div>
+</div>
+<div class="mt-2 text-right text-red-400">
+<span class="text-xs font-bold">600,000</span>
+</div>
+</div>
+<div class="bg-slate-800/50 p-3 border border-slate-700 rounded">
+<div class="flex justify-between text-[10px] font-bold text-slate-500 mb-2 border-b border-slate-700 pb-1">
+<span>[Room: 9] VIP</span>
+<span>담당: 준표</span>
+</div>
+<div class="grid grid-cols-4 gap-1 text-[10px]">
+<div class="col-span-2 text-slate-400">주대</div>
+<div class="col-span-2 text-right text-white">900,000</div>
+<div class="col-span-2 text-slate-400">T/C</div>
+<div class="col-span-2 text-right text-white">400,000</div>
+</div>
+<div class="mt-2 text-right">
+<span class="text-xs font-bold text-primary">1,300,000</span>
+</div>
+</div>
+</div>
+<div class="bg-slate-900 rounded-xl overflow-hidden border border-slate-700">
+<table class="w-full text-left text-sm">
+<thead>
+<tr class="bg-slate-800/80 text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+<th class="px-4 py-3">Category</th>
+<th class="px-4 py-3 text-right">Amount (KRW)</th>
+<th class="px-4 py-3 text-right">Breakdown / Notes</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-800">
+<tr>
+<td class="px-4 py-4 font-bold text-slate-300">Total Liquor (주대)</td>
+<td class="px-4 py-4 text-right font-mono text-white">6,000,000</td>
+<td class="px-4 py-4 text-right text-slate-500 text-xs italic">Diamond x3, House x12</td>
+</tr>
+<tr>
+<td class="px-4 py-4 font-bold text-slate-300">T/C (Lady Expenses)</td>
+<td class="px-4 py-4 text-right font-mono text-white">4,650,000</td>
+<td class="px-4 py-4 text-right text-slate-500 text-xs italic">Staff Incentives Applied</td>
+</tr>
+<tr class="bg-red-500/5">
+<td class="px-4 py-4 font-bold text-red-400">Receivables (외상)</td>
+<td class="px-4 py-4 text-right font-mono text-red-400">2,100,000</td>
+<td class="px-4 py-4 text-right text-slate-500 text-xs italic">Room 4, Room 7 Pending</td>
+</tr>
+<tr>
+<td class="px-4 py-4 font-bold text-slate-300">Total Expenses</td>
+<td class="px-4 py-4 text-right font-mono text-white">1,380,000</td>
+<td class="px-4 py-4 text-right text-slate-500 text-xs italic">Misc &amp; Snacks</td>
+</tr>
+</tbody>
+<tfoot>
+<tr class="bg-slate-800/40">
+<td class="px-4 py-6 font-black text-lg text-primary uppercase">Net Settlement</td>
+<td class="px-4 py-6 text-right font-mono text-2xl font-black text-white">-465,000</td>
+<td class="px-4 py-6 text-right text-slate-500 text-xs font-bold uppercase">Final Balance</td>
+</tr>
+</tfoot>
+</table>
+</div>
+<div class="mt-8 flex justify-end gap-12 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+<div class="flex flex-col items-center">
+<span class="mb-4">Manager Sign</span>
+<div class="h-10 w-24 border-b border-slate-600 flex items-center justify-center italic text-lg text-slate-400 font-serif">K. Park</div>
+</div>
+<div class="flex flex-col items-center">
+<span class="mb-4">Admin Audit</span>
+<div class="h-10 w-24 border-b border-slate-600"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-6 flex gap-4 text-xs text-slate-500">
+<div class="flex items-center gap-1">
+<span class="h-2 w-2 rounded-full bg-primary"></span> Finalized
+                    </div>
+<div class="flex items-center gap-1">
+<span class="h-2 w-2 rounded-full bg-red-500"></span> Outstanding Credit
+                    </div>
+<div class="flex items-center gap-1">
+<span class="h-2 w-2 rounded-full bg-slate-600"></span> Draft
+                    </div>
+</div>
+</div>
+</section>
+</main>
+<footer class="mt-20 py-8 border-t border-slate-200 dark:border-slate-800">
+<div class="max-w-[1600px] mx-auto px-6 text-center text-slate-500 text-xs">
+            © 2024 LUXE Entertainment Management System. All Rights Reserved.
+        </div>
+</footer>
+
+</body></html>

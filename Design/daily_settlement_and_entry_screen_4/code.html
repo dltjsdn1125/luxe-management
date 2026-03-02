@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Staff Performance &amp; Incentive Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Noto+Sans+KR:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --primary-blue: #3b82f6;
+            --accent-gold: #d4af37;
+            --bg-dark: #0f172a;
+            --card-dark: #1e293b;
+        }
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-dark);
+        }
+        .scroll-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .gold-gradient-text {
+            background: linear-gradient(to right, #d4af37, #f9e29d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .blue-glow {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen">
+<header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+<div class="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[var(--primary-blue)] text-3xl">diamond</span>
+<span class="font-bold text-xl tracking-tight uppercase">Luxe MGMT</span>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-medium text-slate-400 hover:text-[var(--primary-blue)] transition-colors" href="#">Dashboard</a>
+<a class="text-sm font-medium text-slate-400 hover:text-[var(--primary-blue)] transition-colors" href="#">Daily Settlement</a>
+<a class="text-sm font-medium text-[var(--primary-blue)] border-b-2 border-[var(--primary-blue)] pb-5 mt-5" href="#">Staff Performance</a>
+<a class="text-sm font-medium text-slate-400 hover:text-[var(--primary-blue)] transition-colors" href="#">Credit Control</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-end mr-2">
+<span class="text-xs font-bold text-slate-400">ADMIN SESSION</span>
+<span class="text-[10px] text-[var(--accent-gold)] font-mono uppercase tracking-widest">Master Controller</span>
+</div>
+<button class="p-2 rounded-full hover:bg-slate-800 transition-colors relative">
+<span class="material-symbols-outlined text-slate-400">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+</button>
+<div class="h-10 w-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-[var(--primary-blue)] font-bold">AD</div>
+</div>
+</div>
+</header>
+<main class="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+<aside class="lg:col-span-3 flex flex-col gap-4">
+<div class="flex items-center justify-between mb-2">
+<h2 class="text-lg font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-[var(--primary-blue)]">groups</span>
+                    Personnel
+                </h2>
+<button class="text-xs text-[var(--primary-blue)] hover:underline">View All</button>
+</div>
+<div class="relative mb-4">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
+<input class="w-full bg-slate-900 border-slate-800 rounded-xl pl-10 text-sm focus:ring-[var(--primary-blue)] focus:border-[var(--primary-blue)]" placeholder="Search staff..." type="text"/>
+</div>
+<div class="space-y-2 overflow-y-auto max-h-[calc(100vh-250px)] scroll-hide">
+<div class="p-4 bg-slate-900 border-l-4 border-l-[var(--accent-gold)] border border-slate-800 rounded-xl cursor-pointer hover:bg-slate-800 transition-all group">
+<div class="flex justify-between items-start mb-1">
+<span class="text-xs font-bold text-[var(--accent-gold)] uppercase tracking-tighter">Sales President</span>
+<span class="material-symbols-outlined text-xs text-slate-600 group-hover:text-slate-400">more_vert</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">person</span>
+</div>
+<div>
+<div class="font-bold">Kim Dong-hyun</div>
+<div class="text-[10px] text-slate-500">ID: SP-7702</div>
+</div>
+</div>
+</div>
+<div class="p-4 bg-[var(--card-dark)] border border-[var(--primary-blue)]/50 rounded-xl cursor-pointer blue-glow ring-1 ring-[var(--primary-blue)]/30">
+<div class="flex justify-between items-start mb-1">
+<span class="text-xs font-bold text-[var(--primary-blue)] uppercase tracking-tighter">Senior Manager</span>
+<span class="material-symbols-outlined text-xs text-[var(--primary-blue)]">check_circle</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-slate-800 border border-[var(--primary-blue)]/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-[var(--primary-blue)]">person</span>
+</div>
+<div>
+<div class="font-bold text-white">Park Ji-sung</div>
+<div class="text-[10px] text-[var(--primary-blue)]/70">ID: MG-4401</div>
+</div>
+</div>
+</div>
+<div class="p-4 bg-slate-900 border border-slate-800 rounded-xl cursor-pointer hover:bg-slate-800 transition-all">
+<div class="flex justify-between items-start mb-1 text-slate-500 uppercase tracking-tighter text-[10px] font-bold">Manager</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-500">person</span>
+</div>
+<div>
+<div class="font-bold text-slate-300">Lee Min-ho</div>
+<div class="text-[10px] text-slate-600">ID: MG-3309</div>
+</div>
+</div>
+</div>
+<div class="p-4 bg-slate-900 border border-slate-800 rounded-xl cursor-pointer hover:bg-slate-800 transition-all">
+<div class="flex justify-between items-start mb-1 text-slate-500 uppercase tracking-tighter text-[10px] font-bold">Manager</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-500">person</span>
+</div>
+<div>
+<div class="font-bold text-slate-300">Choi Soo-jin</div>
+<div class="text-[10px] text-slate-600">ID: MG-2211</div>
+</div>
+</div>
+</div>
+<div class="p-4 bg-slate-900 border border-slate-800 rounded-xl cursor-pointer hover:bg-slate-800 transition-all">
+<div class="flex justify-between items-start mb-1 text-slate-500 uppercase tracking-tighter text-[10px] font-bold">Staff</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-500">person</span>
+</div>
+<div>
+<div class="font-bold text-slate-300">Kang Hana</div>
+<div class="text-[10px] text-slate-600">ID: ST-1102</div>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<section class="lg:col-span-9 flex flex-col gap-6">
+<div class="bg-[var(--card-dark)] p-8 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+<div class="absolute right-0 top-0 opacity-10 pointer-events-none">
+<span class="material-symbols-outlined text-[200px] -mr-20 -mt-10">monitoring</span>
+</div>
+<div class="z-10">
+<div class="flex items-center gap-2 mb-2">
+<span class="px-2 py-1 bg-[var(--primary-blue)]/20 text-[var(--primary-blue)] text-[10px] font-black uppercase rounded">Top Performer</span>
+<span class="text-slate-500 text-xs font-mono">Month: February 2024</span>
+</div>
+<h1 class="text-4xl font-black text-white tracking-tight flex items-center gap-3">
+                        Park Ji-sung
+                        <span class="material-symbols-outlined text-[var(--accent-gold)]">verified</span>
+</h1>
+<p class="text-slate-400 mt-1">Senior Manager · Team A · Joined Sep 2022</p>
+</div>
+<div class="flex gap-3 z-10">
+<button class="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition-colors border border-slate-700">
+<span class="material-symbols-outlined text-sm">mail</span> Send Report
+                    </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-[var(--primary-blue)] hover:bg-blue-600 rounded-lg text-sm transition-colors font-bold shadow-lg shadow-blue-500/20">
+<span class="material-symbols-outlined text-sm">edit</span> Edit Profile
+                    </button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+<div class="flex items-center gap-3 mb-4">
+<div class="p-2 bg-blue-500/10 rounded-lg">
+<span class="material-symbols-outlined text-[var(--primary-blue)]">payments</span>
+</div>
+<span class="text-slate-400 text-sm font-semibold">Revenue Contribution</span>
+</div>
+<div class="text-3xl font-black text-white tracking-tighter">₩ 42,500,000</div>
+<div class="mt-2 text-xs flex items-center gap-1 text-emerald-400">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+                        12% from last month
+                    </div>
+</div>
+<div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+<div class="flex items-center gap-3 mb-4">
+<div class="p-2 bg-[var(--accent-gold)]/10 rounded-lg">
+<span class="material-symbols-outlined text-[var(--accent-gold)]">rewarded_ads</span>
+</div>
+<span class="text-slate-400 text-sm font-semibold">Total Incentives (Wari)</span>
+</div>
+<div class="text-3xl font-black gold-gradient-text tracking-tighter">₩ 8,240,000</div>
+<div class="mt-2 text-xs flex items-center gap-1 text-emerald-400">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+                        Performance Bonus: ₩ 450,000
+                    </div>
+</div>
+<div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+<div class="flex items-center gap-3 mb-4">
+<div class="p-2 bg-red-500/10 rounded-lg">
+<span class="material-symbols-outlined text-red-500">credit_card_off</span>
+</div>
+<span class="text-slate-400 text-sm font-semibold">Outstanding Credit</span>
+</div>
+<div class="text-3xl font-black text-red-500 tracking-tighter">₩ 1,200,000</div>
+<div class="mt-2 text-xs flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-xs">info</span>
+                        Overdue: 2 cases
+                    </div>
+</div>
+</div>
+<div class="bg-[var(--card-dark)] p-8 rounded-2xl border border-slate-800">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h3 class="text-lg font-bold text-white">Monthly Performance Trend</h3>
+<p class="text-sm text-slate-500">Revenue generation history (Last 6 Months)</p>
+</div>
+<div class="flex gap-2">
+<span class="flex items-center gap-1 text-[10px] text-slate-400 uppercase tracking-widest px-3 py-1 bg-slate-800 rounded">
+<span class="w-2 h-2 bg-[var(--primary-blue)] rounded-full"></span> Target
+                        </span>
+<span class="flex items-center gap-1 text-[10px] text-slate-400 uppercase tracking-widest px-3 py-1 bg-slate-800 rounded">
+<span class="w-2 h-2 bg-[var(--accent-gold)] rounded-full"></span> Actual
+                        </span>
+</div>
+</div>
+<div class="h-64 flex items-end justify-between gap-4 px-2">
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full relative h-40 group">
+<div class="absolute bottom-0 w-full bg-slate-800 rounded-t-md h-full"></div>
+<div class="absolute bottom-0 w-full bg-slate-700/50 rounded-t-md h-[85%]"></div>
+<div class="absolute bottom-0 w-full bg-gradient-to-t from-[var(--primary-blue)]/40 to-[var(--primary-blue)] rounded-t-md h-[75%] transition-all group-hover:brightness-110"></div>
+</div>
+<span class="text-[10px] font-bold text-slate-500 uppercase">Sept</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full relative h-40 group">
+<div class="absolute bottom-0 w-full bg-slate-800 rounded-t-md h-full"></div>
+<div class="absolute bottom-0 w-full bg-gradient-to-t from-[var(--primary-blue)]/40 to-[var(--primary-blue)] rounded-t-md h-[90%] transition-all group-hover:brightness-110"></div>
+</div>
+<span class="text-[10px] font-bold text-slate-500 uppercase">Oct</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full relative h-40 group">
+<div class="absolute bottom-0 w-full bg-slate-800 rounded-t-md h-full"></div>
+<div class="absolute bottom-0 w-full bg-gradient-to-t from-[var(--primary-blue)]/40 to-[var(--primary-blue)] rounded-t-md h-[60%] transition-all group-hover:brightness-110"></div>
+</div>
+<span class="text-[10px] font-bold text-slate-500 uppercase">Nov</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full relative h-40 group">
+<div class="absolute bottom-0 w-full bg-slate-800 rounded-t-md h-full"></div>
+<div class="absolute bottom-0 w-full bg-gradient-to-t from-[var(--primary-blue)]/40 to-[var(--primary-blue)] rounded-t-md h-[100%] transition-all group-hover:brightness-110 shadow-lg shadow-blue-500/10"></div>
+</div>
+<span class="text-[10px] font-bold text-slate-500 uppercase">Dec</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full relative h-40 group">
+<div class="absolute bottom-0 w-full bg-slate-800 rounded-t-md h-full"></div>
+<div class="absolute bottom-0 w-full bg-gradient-to-t from-[var(--primary-blue)]/40 to-[var(--primary-blue)] rounded-t-md h-[80%] transition-all group-hover:brightness-110"></div>
+</div>
+<span class="text-[10px] font-bold text-slate-500 uppercase">Jan</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full relative h-40 group">
+<div class="absolute bottom-0 w-full bg-slate-800 rounded-t-md h-full"></div>
+<div class="absolute bottom-0 w-full bg-gradient-to-t from-[var(--accent-gold)]/40 to-[var(--accent-gold)] rounded-t-md h-[95%] transition-all group-hover:brightness-110 shadow-lg shadow-yellow-500/10"></div>
+</div>
+<span class="text-[10px] font-bold text-[var(--accent-gold)] uppercase">Feb</span>
+</div>
+</div>
+</div>
+<div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-[var(--accent-gold)]">settings</span>
+<h3 class="text-sm font-bold uppercase tracking-widest text-slate-400">Individual Incentive Settings (Wari Rate)</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="space-y-4">
+<div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-xl border border-slate-700">
+<div>
+<div class="text-sm font-bold">Standard Room Sales</div>
+<div class="text-[10px] text-slate-500 uppercase tracking-tighter">Base Rate</div>
+</div>
+<div class="flex items-center gap-2">
+<input class="w-12 bg-slate-900 border-slate-700 rounded text-center text-sm focus:ring-[var(--primary-blue)]" type="text" value="15"/>
+<span class="text-sm font-bold text-slate-500">%</span>
+</div>
+</div>
+<div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-xl border border-slate-700">
+<div>
+<div class="text-sm font-bold">VIP Bottle Sales</div>
+<div class="text-[10px] text-slate-500 uppercase tracking-tighter">High Tier Rate</div>
+</div>
+<div class="flex items-center gap-2">
+<input class="w-12 bg-slate-900 border-slate-700 rounded text-center text-sm focus:ring-[var(--primary-blue)]" type="text" value="22"/>
+<span class="text-sm font-bold text-slate-500">%</span>
+</div>
+</div>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-xl border border-slate-700">
+<div>
+<div class="text-sm font-bold">Lady Arrangement T/C</div>
+<div class="text-[10px] text-slate-500 uppercase tracking-tighter">Fixed Commission</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-slate-500">₩</span>
+<input class="w-20 bg-slate-900 border-slate-700 rounded text-right text-sm focus:ring-[var(--primary-blue)]" type="text" value="10,000"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-xs font-bold uppercase tracking-widest rounded-xl transition-all">Reset Defaults</button>
+<button class="flex-1 py-3 bg-gradient-to-r from-[var(--accent-gold)] to-yellow-600 text-slate-900 font-black text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-yellow-500/20 transition-all">Update Rates</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<footer class="mt-20 py-8 border-t border-slate-800">
+<div class="max-w-[1600px] mx-auto px-6 flex justify-between items-center">
+<div class="text-slate-500 text-xs">
+                © 2024 LUXE Entertainment Management System. Authorized Personnel Only.
+            </div>
+<div class="flex gap-4 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+<a class="hover:text-slate-400" href="#">Security Protocol</a>
+<a class="hover:text-slate-400" href="#">System Logs</a>
+<a class="hover:text-slate-400" href="#">API Console</a>
+</div>
+</div>
+</footer>
+
+</body></html>
