@@ -393,7 +393,7 @@ const SettlementPage = {
                         ${staff.filter(s => s.role !== 'staff').map(s => `
                         <div class="flex items-center justify-between wari-row" data-wari-type="staff">
                             <span class="text-sm">${s.name} <span class="text-[10px] text-slate-500">${s.incentive_rate}%</span></span>
-                            <input class="w-1/3 min-w-0 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono text-right wari-amount amount-input" data-staff="${s.id}" placeholder="0"/>
+                            <input class="w-1/3 min-w-0 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono text-right wari-amount amount-input" data-staff="${s.id}" data-rate="${s.incentive_rate}" placeholder="자동"/>
                         </div>`).join('')}
                     </div>
                     <p class="text-[10px] text-slate-600 mt-3 mb-2 pt-3 border-t border-slate-800">아가씨</p>
@@ -401,7 +401,7 @@ const SettlementPage = {
                         ${girlsList.map(g => `
                         <div class="flex items-center justify-between wari-row" data-wari-type="girl">
                             <span class="text-sm text-pink-400">${g.name} <span class="text-[10px] text-slate-500">${g.incentive_rate || 0}%</span></span>
-                            <input class="w-1/3 min-w-0 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono text-right wari-girl-amount amount-input" data-girl="${g.id}" placeholder="0"/>
+                            <input class="w-1/3 min-w-0 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono text-right wari-girl-amount amount-input" data-girl="${g.id}" data-rate="${g.incentive_rate || 0}" placeholder="자동"/>
                         </div>`).join('')}
                     </div>
                 </div>
@@ -861,7 +861,39 @@ const SettlementPage = {
         };
     },
 
+    _autoCalcWari() {
+        let totalRevenue = 0;
+        document.querySelectorAll('.room-card').forEach(card => {
+            const joodae = Format.parseNumber(card.querySelector('.room-joodae')?.textContent);
+            const tc = Format.parseNumber(card.querySelector('.room-tc')?.textContent);
+            totalRevenue += joodae + tc;
+        });
+
+        const assignedGirlIds = new Set();
+        document.querySelectorAll('.room-card .girl-select').forEach(sel => {
+            if (sel.value) assignedGirlIds.add(sel.value);
+        });
+
+        document.querySelectorAll('[data-wari-type="staff"] .wari-amount').forEach(input => {
+            const rate = parseFloat(input.dataset.rate) || 0;
+            const amount = Math.round(totalRevenue * rate / 100);
+            input.value = amount > 0 ? Format.number(amount) : '';
+        });
+
+        document.querySelectorAll('[data-wari-type="girl"] .wari-girl-amount').forEach(input => {
+            const girlId = input.dataset.girl;
+            const rate = parseFloat(input.dataset.rate) || 0;
+            if (assignedGirlIds.has(girlId)) {
+                const amount = Math.round(totalRevenue * rate / 100);
+                input.value = amount > 0 ? Format.number(amount) : '';
+            } else {
+                input.value = '';
+            }
+        });
+    },
+
     async updatePreview() {
+        this._autoCalcWari();
         const data = await this.getFormData();
         const el = document.getElementById('preview-content');
         if (!el) return;
