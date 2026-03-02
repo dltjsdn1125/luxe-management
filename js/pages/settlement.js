@@ -867,14 +867,12 @@ const SettlementPage = {
             </div>`).join('');
 
         return `
-        <div class="flex justify-between items-start border-b-2 border-slate-600 pb-4 mb-4">
+        <div class="border-b-2 border-slate-600 pb-4 mb-4">
+            <h3 class="text-lg font-black text-white">${data.date ? Format.dateKR(data.date) : '-'}</h3>
+            <p class="text-slate-400 text-xs mb-2">${roomCount}개 룸</p>
             <div>
-                <h3 class="text-xl font-black text-white">${data.date ? Format.dateKR(data.date) : '-'}</h3>
-                <p class="text-slate-400 text-xs">${roomCount}개 룸</p>
-            </div>
-            <div class="text-right">
-                <span class="text-slate-500 text-[10px] block">총 매출</span>
-                <span class="text-2xl font-black text-blue-500">${Format.number(data.total_revenue)}</span>
+                <span class="text-slate-500 text-[10px]">총 매출</span>
+                <span class="text-2xl font-black text-blue-500 ml-2">${Format.number(data.total_revenue)}</span>
             </div>
         </div>
         ${roomsHTML}
@@ -1084,14 +1082,12 @@ const SettlementPage = {
             <div id="printable-area" class="bg-[#1e293b] rounded-2xl p-4 md:p-8 shadow-2xl border border-slate-700/50 relative overflow-hidden">
                 <div class="absolute inset-0 paper-grid opacity-20 pointer-events-none"></div>
                 <div class="relative z-10">
-                    <div class="flex justify-between items-start border-b-2 border-slate-600 pb-4 mb-4">
+                    <div class="border-b-2 border-slate-600 pb-4 mb-4">
+                        <h3 class="text-xl font-black text-white">${Format.dateKR(sale.date)}</h3>
+                        <p class="text-slate-400 text-sm mb-2">${hasRoomData ? saleRooms.length : (sale.rooms || 0)}개 룸 ${enteredBy ? '· ' + enteredBy.name : ''}</p>
                         <div>
-                            <h3 class="text-2xl font-black text-white">${Format.dateKR(sale.date)}</h3>
-                            <p class="text-slate-400 text-sm">${hasRoomData ? saleRooms.length : (sale.rooms || 0)}개 룸 ${enteredBy ? '· ' + enteredBy.name : ''}</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-slate-500 text-[10px] block">총 매출</span>
-                            <span class="text-3xl font-black text-blue-500">${Format.number(sale.total_revenue)}</span>
+                            <span class="text-slate-500 text-[10px]">총 매출</span>
+                            <span class="text-2xl font-black text-blue-500 ml-2">${Format.number(sale.total_revenue)}</span>
                         </div>
                     </div>
 
