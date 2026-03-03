@@ -325,10 +325,18 @@ const SettlementPage = {
         return list.filter(item => item.branch_name === myStaff.branch_name);
     },
 
-    _filterGirlsByBranch(girlsList, staff, myStaff, isAdmin) {
-        if (isAdmin || !myStaff || !myStaff.branch_name) return girlsList;
-        const branchStaffIds = staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id);
+    _filterGirlsByBranch(girlsList, staff, branchStaff, skipFilter) {
+        if (skipFilter || !branchStaff || !branchStaff.branch_name) return girlsList;
+        const branchStaffIds = staff.filter(s => s.branch_name === branchStaff.branch_name).map(s => s.id);
         return girlsList.filter(g => !g.staff_id || branchStaffIds.includes(g.staff_id));
+    },
+
+    _getEffectiveBranchStaff(allStaff, myStaff, isAdmin) {
+        if (!isAdmin) return myStaff;
+        const sel = document.getElementById('s-entered-by');
+        const enteredById = sel?.value;
+        if (!enteredById) return null;
+        return allStaff.find(s => s.id === enteredById) || null;
     },
 
     // ═══ 룸 기반 정산 입력 폼 ═══
@@ -341,7 +349,8 @@ const SettlementPage = {
         const myStaffId = await Auth.getStaffId();
         const myStaff = allStaff.find(s => s.id === myStaffId);
         const staff = this._filterByBranch(allStaff, myStaff, isAdmin);
-        const girlsList = this._filterGirlsByBranch(allGirls, allStaff, myStaff, isAdmin);
+        const effStaff = this._getEffectiveBranchStaff(allStaff, myStaff, isAdmin);
+        const girlsList = this._filterGirlsByBranch(allGirls, allStaff, effStaff, !effStaff || !effStaff.branch_name);
         const tcUnit = await this._getTcUnit();
         this.roomCounter = 0;
 
@@ -465,7 +474,7 @@ const SettlementPage = {
         </div>`;
 
         await this._addRoom();
-        this._bindFormEvents(container, staff, liquors, girlsList);
+        this._bindFormEvents(container, staff, liquors, girlsList, allGirls, allStaff, myStaff, isAdmin);
     },
 
     async _roomHTML(idx, staff, liquors, girlsList) {
@@ -556,7 +565,8 @@ const SettlementPage = {
         const myStaffId = await Auth.getStaffId();
         const myStaff = allStaff.find(s => s.id === myStaffId);
         const staff = this._filterByBranch(allStaff, myStaff, isAdmin);
-        const girlsList = this._filterGirlsByBranch(allGirls, allStaff, myStaff, isAdmin);
+        const effStaff = this._getEffectiveBranchStaff(allStaff, myStaff, isAdmin);
+        const girlsList = this._filterGirlsByBranch(allGirls, allStaff, effStaff, !effStaff || !effStaff.branch_name);
         const idx = this.roomCounter++;
         const roomsEl = document.getElementById('rooms-container');
         if (!roomsEl) return;
@@ -595,7 +605,25 @@ const SettlementPage = {
         if (totEl) { totEl.textContent = Format.won(total); totEl.dataset.value = total; }
     },
 
-    _bindFormEvents(container, staff, liquors, girlsList) {
+    _bindFormEvents(container, staff, liquors, girlsList, allGirls, allStaff, myStaff, isAdmin) {
+        const getFilteredGirls = () => {
+            const effStaff = this._getEffectiveBranchStaff(allStaff, myStaff, isAdmin);
+            return this._filterGirlsByBranch(allGirls, allStaff, effStaff, !effStaff || !effStaff.branch_name);
+        };
+        const refreshAllGirlDropdowns = (list) => {
+            const opts = list.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+            const gpOpts = list.map(g => `<option value="${g.id}" data-standby="${g.standby_fee || 0}" data-event="${g.event_fee || 0}">${g.name}</option>`).join('');
+            container.querySelectorAll('.girl-select').forEach(sel => {
+                const cur = sel.value;
+                sel.innerHTML = '<option value="">선택</option>' + opts;
+                if (cur && list.some(g => g.id === cur)) sel.value = cur;
+            });
+            container.querySelectorAll('.gp-girl').forEach(sel => {
+                const cur = sel.value;
+                sel.innerHTML = '<option value="">선택</option>' + gpOpts;
+                if (cur && list.some(g => g.id === cur)) sel.value = cur;
+            });
+        };
         document.getElementById('btn-back-list').addEventListener('click', () => { this.mode = 'list'; App.renderPage('settlement'); });
         document.getElementById('btn-add-room').addEventListener('click', async () => { await this._addRoom(); await this.updatePreview(); });
         document.getElementById('btn-save').addEventListener('click', () => this.saveSettlement());
@@ -618,6 +646,12 @@ const SettlementPage = {
             await this.updatePreview();
         });
 
+        const enteredByEl = document.getElementById('s-entered-by');
+        if (enteredByEl && isAdmin) {
+            enteredByEl.addEventListener('change', () => {
+                refreshAllGirlDropdowns(getFilteredGirls());
+            });
+        }
         container.addEventListener('change', async (e) => {
             const roomCard = e.target.closest('.room-card');
             if (roomCard) await this._updateRoomSummary(roomCard);
@@ -649,11 +683,12 @@ const SettlementPage = {
                 await this.updatePreview();
             }
             if (btn.classList.contains('btn-add-girl')) {
+                const filtered = getFilteredGirls();
                 const girlsEl = btn.closest('.room-card').querySelector('.room-girls');
                 const row = document.createElement('div');
                 row.className = 'girl-row flex flex-wrap gap-1 items-center';
                 row.innerHTML = `<select class="girl-select w-full sm:flex-1 sm:w-auto bg-slate-800 border-slate-700 rounded text-xs">
-                    <option value="">선택</option>${girlsList.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+                    <option value="">선택</option>${filtered.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
                     </select>
                     <div class="flex items-center gap-1 flex-1 min-w-0">
                         <input type="time" class="girl-entry-time flex-1 min-w-[110px] bg-slate-800 border-slate-700 rounded text-xs px-1.5 py-1"/>
@@ -695,11 +730,12 @@ const SettlementPage = {
         });
 
         document.getElementById('btn-add-girl-pay').addEventListener('click', () => {
+            const filtered = getFilteredGirls();
             const row = document.createElement('div');
             row.className = 'girl-pay-row flex gap-2 items-center';
             row.innerHTML = `<select class="gp-girl flex-1 bg-slate-800 border-slate-700 rounded text-xs">
                     <option value="">선택</option>
-                    ${girlsList.map(g => `<option value="${g.id}" data-standby="${g.standby_fee || 0}" data-event="${g.event_fee || 0}">${g.name}</option>`).join('')}
+                    ${filtered.map(g => `<option value="${g.id}" data-standby="${g.standby_fee || 0}" data-event="${g.event_fee || 0}">${g.name}</option>`).join('')}
                 </select>
                 <select class="gp-type w-20 bg-slate-800 border-slate-700 rounded text-xs">
                     <option value="standby">대기비</option>

@@ -105,7 +105,8 @@ input[type="time"] {
 input[type="time"]::-webkit-calendar-picker-indicator {
     padding: 0;
     margin: 0 2px 0 0;
-    opacity: 0.5;
+    opacity: 1;
+    filter: brightness(0) invert(1);
 }
 
 /* Settings page tabs */
