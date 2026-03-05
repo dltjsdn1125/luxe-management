@@ -1,6 +1,7 @@
 // 외상 관리 페이지
 const CreditPage = {
-    filterStaffId: null,
+    filterBranch: null,
+    filterStaffId: null,  // 하위 호환
     filterStatus: null,
     periodType: 'today',
     customFrom: null,
@@ -19,9 +20,13 @@ const CreditPage = {
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
             receivables = receivables.filter(r => r.staff_id === staffId || r.entered_by === staffId);
-        } else if (this.filterStaffId) {
-            receivables = receivables.filter(r => r.staff_id === this.filterStaffId || r.entered_by === this.filterStaffId);
+        } else if (this.filterBranch) {
+            const branchStaffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
+            receivables = receivables.filter(r => branchStaffIds.includes(r.staff_id) || branchStaffIds.includes(r.entered_by));
         }
+
+        // 지점 목록
+        const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
 
         if (this.filterStatus) {
             if (this.filterStatus === 'unpaid') receivables = receivables.filter(r => r.status === 'unpaid');
@@ -85,10 +90,10 @@ const CreditPage = {
             <!-- 기간 필터 -->
             ${PeriodFilter.renderUI(this.periodType, this.customFrom, this.customTo, 'cr')}
 
-            <!-- 관리자 직원 필터 -->
-            ${isAdmin ? `<div class="flex flex-wrap gap-2">
-                <button class="credit-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!this.filterStaffId ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-filter-staff="">전체</button>
-                ${staff.map(s => `<button class="credit-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${this.filterStaffId === s.id ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-filter-staff="${s.id}">${s.branch_name ? s.branch_name + '(' + s.name + ')' : s.name}</button>`).join('')}
+            <!-- 관리자 지점 필터 -->
+            ${isAdmin ? `<div class="flex flex-wrap gap-2 items-center">
+                <button class="cr-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!this.filterBranch ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="">전체</button>
+                ${branchNames.map(bn => `<button class="cr-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${this.filterBranch === bn ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="${bn}">${bn}</button>`).join('')}
             </div>` : ''}
 
             <!-- 상태 필터 -->
@@ -172,10 +177,10 @@ const CreditPage = {
             App.renderPage('credit');
         });
 
-        // 관리자 직원 필터
-        container.querySelectorAll('.credit-filter').forEach(btn => {
+        // 관리자 지점 필터
+        container.querySelectorAll('.cr-branch-filter').forEach(btn => {
             btn.addEventListener('click', () => {
-                this.filterStaffId = btn.dataset.filterStaff || null;
+                this.filterBranch = btn.dataset.branch || null;
                 App.renderPage('credit');
             });
         });

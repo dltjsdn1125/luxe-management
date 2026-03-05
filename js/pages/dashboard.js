@@ -4,6 +4,7 @@ const DashboardPage = {
     customFrom: null,
     customTo: null,
     viewMode: 'total',
+    filterBranch: null,
     _charts: [],
 
     _destroyCharts() {
@@ -50,6 +51,14 @@ const DashboardPage = {
             });
         });
 
+        // 지점 필터 탭
+        container.querySelectorAll('.db-branch-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.filterBranch = btn.dataset.branch || null;
+                App.renderPage('dashboard');
+            });
+        });
+
         PeriodFilter.bindEvents(container, 'db', (type, from, to) => {
             this.periodType = type; this.customFrom = from; this.customTo = to;
             App.renderPage('dashboard');
@@ -65,9 +74,30 @@ const DashboardPage = {
         const liquors = await DB.getAll('liquor');
         const inventory = await DB.getAll('liquor_inventory');
 
-        const allSales = PeriodFilter.filterByDate(allSalesRaw, 'date', range.from, range.to);
-        const allExpenses = PeriodFilter.filterByDate(allExpensesRaw, 'date', range.from, range.to);
-        const allReceivables = PeriodFilter.filterByDate(allReceivablesRaw, 'date', range.from, range.to);
+        // 지점 목록
+        const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
+
+        // 지점 필터 적용 (선택된 지점의 직원 ID만 추출)
+        let filteredStaff = staff;
+        if (this.filterBranch) {
+            filteredStaff = staff.filter(s => s.branch_name === this.filterBranch);
+        }
+        const filteredStaffIds = filteredStaff.map(s => s.id);
+
+        const allSalesPeriod = PeriodFilter.filterByDate(allSalesRaw, 'date', range.from, range.to);
+        const allExpensesPeriod = PeriodFilter.filterByDate(allExpensesRaw, 'date', range.from, range.to);
+        const allReceivablesPeriod = PeriodFilter.filterByDate(allReceivablesRaw, 'date', range.from, range.to);
+
+        // 지점 필터 적용
+        const allSales = this.filterBranch
+            ? allSalesPeriod.filter(s => filteredStaffIds.includes(s.entered_by))
+            : allSalesPeriod;
+        const allExpenses = this.filterBranch
+            ? allExpensesPeriod.filter(e => filteredStaffIds.includes(e.entered_by))
+            : allExpensesPeriod;
+        const allReceivables = this.filterBranch
+            ? allReceivablesPeriod.filter(r => filteredStaffIds.includes(r.staff_id) || filteredStaffIds.includes(r.entered_by))
+            : allReceivablesPeriod;
 
         const totalRevenue = allSales.reduce((s, r) => s + (Number(r.total_revenue) || 0), 0);
         const totalExpense = allExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
@@ -77,9 +107,9 @@ const DashboardPage = {
         const totalReceivable = allReceivables.filter(r => r.status !== 'paid').reduce((s, r) => s + (r.amount - (r.paid_amount || 0)), 0);
         const totalDeductions = totalWari + totalGirlPay + totalDailyExpense + totalExpense;
 
-        // ── 지점별 집계 (staffStats = 지점 단위) ──
+        // ── 지점별 집계 (staffStats = 지점 단위, 필터 적용) ──
         const branchStatsMap = {};
-        staff.forEach(s => {
+        filteredStaff.forEach(s => {
             const bn = s.branch_name || s.name;
             if (!branchStatsMap[bn]) {
                 branchStatsMap[bn] = {
@@ -157,13 +187,17 @@ const DashboardPage = {
         };
 
         const todayStr = Format.today();
-        const todaySales = allSalesRaw.filter(s => s.date === todayStr && s.entered_by);
+        const todaySalesRaw = allSalesRaw.filter(s => s.date === todayStr && s.entered_by);
+        // 지점 필터 적용 (마감현황도)
+        const todaySales = this.filterBranch
+            ? todaySalesRaw.filter(s => filteredStaffIds.includes(s.entered_by))
+            : todaySalesRaw;
 
         // ── 지점별로 마감현황 집계 ──
-        const branchClosureMap = {};   // branchName → { revenue, closedCount, totalCount, hasAnyData }
-        // 지점 목록 수집 (staff.branch_name 기준)
-        const branchNames = [...new Set(staff.map(s => s.branch_name || s.name).filter(Boolean))];
-        branchNames.forEach(bn => {
+        const branchClosureMap = {};
+        // 지점 필터 적용: 선택된 지점만 또는 전체
+        const closureTargetBranches = this.filterBranch ? [this.filterBranch] : branchNames;
+        closureTargetBranches.forEach(bn => {
             const branchStaff = staff.filter(s => (s.branch_name || s.name) === bn);
             const branchSales = todaySales.filter(sale => branchStaff.some(s => s.id === sale.entered_by));
             const revenue = branchSales.reduce((sum, sale) => sum + (Number(sale.total_revenue) || 0), 0);
@@ -178,10 +212,10 @@ const DashboardPage = {
 
         container.innerHTML = `
         <div class="max-w-[1600px] mx-auto p-4 md:p-6 lg:p-10">
-            <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+            <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div>
                     <h2 class="text-2xl md:text-3xl font-bold text-white">관리자 대시보드</h2>
-                    <p class="text-slate-500 text-sm mt-1">${Format.dateKR(new Date())} · 전체 직원 취합 현황</p>
+                    <p class="text-slate-500 text-sm mt-1">${Format.dateKR(new Date())} · ${this.filterBranch ? `<span class="text-blue-400 font-bold">${this.filterBranch}</span>` : '전체 지점'} 현황</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button id="btn-refresh-dashboard" class="flex items-center gap-1.5 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs hover:bg-slate-700 transition-colors text-slate-300" title="데이터 새로고침">
@@ -195,6 +229,12 @@ const DashboardPage = {
                     </button>
                 </div>
             </header>
+
+            <!-- 지점 필터 탭 -->
+            <div class="flex flex-wrap gap-2 mb-6 items-center">
+                <button class="db-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!this.filterBranch ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="">전체</button>
+                ${branchNames.map(bn => `<button class="db-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${this.filterBranch === bn ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="${bn}">${bn}</button>`).join('')}
+            </div>
 
             <!-- 당일 마감 현황 (지점별) -->
             <div class="bg-slate-900 rounded-xl border border-slate-800 p-4 mb-6">
@@ -211,7 +251,7 @@ const DashboardPage = {
                     </div>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                    ${branchNames.map(bn => {
+                    ${closureTargetBranches.map(bn => {
                         const bc = branchClosureMap[bn];
                         let bgClass, avatarClass, labelClass, statusHtml;
                         if (bc.isClosed) {

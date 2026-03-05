@@ -2,6 +2,7 @@
 const SettlementPage = {
     mode: 'list',
     editId: null,
+    filterBranch: null,
     periodType: 'today',
     customFrom: null,
     customTo: null,
@@ -37,6 +38,10 @@ const SettlementPage = {
         if (!Auth.isAdmin()) {
             const staffId = await Auth.getStaffId();
             settlements = settlements.filter(s => s.entered_by === staffId);
+        } else if (this.filterBranch) {
+            const allStaff = await DB.getAll('staff');
+            const branchStaffIds = allStaff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
+            settlements = settlements.filter(s => branchStaffIds.includes(s.entered_by));
         }
         const range = PeriodFilter.getRange(this.periodType, this.customFrom, this.customTo);
         settlements = PeriodFilter.filterByDate(settlements, 'date', range.from, range.to);
@@ -53,6 +58,7 @@ const SettlementPage = {
         const settlements = await this.getSettlements();
         const staff = await DB.getAll('staff');
         const isAdmin = Auth.isAdmin();
+        const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
 
         // ── 전체 합계 ──
         const sumRevenue   = settlements.reduce((s, r) => s + (Number(r.total_revenue)    || 0), 0);
@@ -184,6 +190,11 @@ const SettlementPage = {
             </div>
 
             ${PeriodFilter.renderUI(this.periodType, this.customFrom, this.customTo, 'st')}
+
+            ${isAdmin ? `<div class="flex flex-wrap gap-2 items-center">
+                <button class="st-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!this.filterBranch ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="">전체</button>
+                ${branchNames.map(bn => `<button class="st-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${this.filterBranch === bn ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="${bn}">${bn}</button>`).join('')}
+            </div>` : ''}
 
             <!-- 전체 요약 카드 -->
             <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -340,6 +351,14 @@ const SettlementPage = {
         PeriodFilter.bindEvents(container, 'st', (type, from, to) => {
             this.periodType = type; this.customFrom = from; this.customTo = to;
             this.mode = 'list'; App.renderPage('settlement');
+        });
+
+        // 지점 필터 탭
+        container.querySelectorAll('.st-branch-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.filterBranch = btn.dataset.branch || null;
+                this.mode = 'list'; App.renderPage('settlement');
+            });
         });
 
         // 아코디언 토글

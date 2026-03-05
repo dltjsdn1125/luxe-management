@@ -1,6 +1,7 @@
 // 지출 관리 페이지
 const ExpensesPage = {
-    filterStaffId: null,
+    filterBranch: null,
+    filterStaffId: null,  // 하위 호환
     periodType: 'today',
     customFrom: null,
     customTo: null,
@@ -19,9 +20,13 @@ const ExpensesPage = {
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
             expenses = expenses.filter(e => e.entered_by === staffId);
-        } else if (this.filterStaffId) {
-            expenses = expenses.filter(e => e.entered_by === this.filterStaffId);
+        } else if (this.filterBranch) {
+            const branchStaffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
+            expenses = expenses.filter(e => branchStaffIds.includes(e.entered_by));
         }
+
+        // 지점 목록
+        const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
 
         const periodTotal = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
@@ -55,10 +60,10 @@ const ExpensesPage = {
             <!-- 기간 필터 -->
             ${PeriodFilter.renderUI(this.periodType, this.customFrom, this.customTo, 'ep')}
 
-            <!-- 관리자 직원 필터 -->
-            ${isAdmin ? `<div class="flex flex-wrap gap-2">
-                <button class="exp-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!this.filterStaffId ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-filter-staff="">전체</button>
-                ${staff.map(s => `<button class="exp-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${this.filterStaffId === s.id ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-filter-staff="${s.id}">${s.branch_name ? s.branch_name + '(' + s.name + ')' : s.name}</button>`).join('')}
+            <!-- 관리자 지점 필터 -->
+            ${isAdmin ? `<div class="flex flex-wrap gap-2 items-center">
+                <button class="ep-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!this.filterBranch ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="">전체</button>
+                ${branchNames.map(bn => `<button class="ep-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${this.filterBranch === bn ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="${bn}">${bn}</button>`).join('')}
             </div>` : ''}
 
             <!-- 기간 요약 -->
@@ -153,10 +158,10 @@ const ExpensesPage = {
             App.renderPage('expenses');
         });
 
-        // 관리자 직원 필터
-        container.querySelectorAll('.exp-filter').forEach(btn => {
+        // 관리자 지점 필터
+        container.querySelectorAll('.ep-branch-filter').forEach(btn => {
             btn.addEventListener('click', () => {
-                this.filterStaffId = btn.dataset.filterStaff || null;
+                this.filterBranch = btn.dataset.branch || null;
                 App.renderPage('expenses');
             });
         });
