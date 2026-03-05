@@ -482,7 +482,7 @@ const StaffPage = {
                             ${girls.map((g, gi) => {
                                 const workDays = attendanceMap[g.id]?.size || 0;
                                 return `
-                                <tr class="hover:bg-slate-800/20 ${gi % 2 === 0 ? '' : 'bg-slate-900/50'}">
+                                <tr class="hover:bg-slate-800/20 ${gi % 2 === 0 ? '' : 'bg-slate-900/50'}" data-girl-row="${g.id}">
                                     <td class="sticky left-0 bg-slate-900 px-3 py-2 font-semibold text-white border-r border-slate-800 z-10" style="min-width:100px">
                                         <div class="truncate max-w-[90px]">${g.name}</div>
                                     </td>
@@ -496,7 +496,7 @@ const StaffPage = {
                                         '</td>';
                                     }).join('')}
                                     <td class="px-3 py-2 text-right font-bold border-l border-slate-800">
-                                        <span class="${workDays >= 25 ? 'text-emerald-400' : workDays >= 20 ? 'text-yellow-300' : 'text-slate-300'}">${workDays}일</span>
+                                        <span class="att-subtotal ${workDays >= 25 ? 'text-emerald-400' : workDays >= 20 ? 'text-yellow-300' : 'text-slate-300'}">${workDays}일</span>
                                     </td>
                                 </tr>`;
                             }).join('')}
@@ -506,11 +506,11 @@ const StaffPage = {
                                 <td class="sticky left-0 bg-slate-800 px-3 py-2.5 font-bold text-slate-300 border-r border-slate-700 z-10">일별 합계</td>
                                 ${days.map(d => {
                                     const cnt = dailyTotal[d] || 0;
-                                    return `<td class="px-0.5 py-2 text-center">
+                                    return `<td class="px-0.5 py-2 text-center" data-day-total="${d}">
                                         <span class="text-[10px] font-bold ${cnt > 0 ? 'text-blue-400' : 'text-slate-700'}">${cnt > 0 ? cnt : '-'}</span>
                                     </td>`;
                                 }).join('')}
-                                <td class="px-3 py-2.5 text-right font-black text-white border-l border-slate-700">
+                                <td class="px-3 py-2.5 text-right font-black text-white border-l border-slate-700 att-total-days">
                                     ${girls.reduce((sum, g) => sum + (attendanceMap[g.id]?.size || 0), 0)}일
                                 </td>
                             </tr>
@@ -521,20 +521,20 @@ const StaffPage = {
 
             <!-- 출근 통계 요약 -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-                    <div class="text-2xl font-black text-white">${girls.length}</div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center att-stat-card">
+                    <div class="text-2xl font-black text-white att-stat-val">${girls.length}</div>
                     <div class="text-xs text-slate-500 mt-0.5">총 인원</div>
                 </div>
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-                    <div class="text-2xl font-black text-emerald-400">${girls.filter(g => (attendanceMap[g.id]?.size || 0) >= 25).length}</div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center att-stat-card">
+                    <div class="text-2xl font-black text-emerald-400 att-stat-val">${girls.filter(g => (attendanceMap[g.id]?.size || 0) >= 25).length}</div>
                     <div class="text-xs text-slate-500 mt-0.5">만근 (25일↑)</div>
                 </div>
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-                    <div class="text-2xl font-black text-yellow-300">${girls.length > 0 ? Math.round(girls.reduce((s, g) => s + (attendanceMap[g.id]?.size || 0), 0) / girls.length) : 0}</div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center att-stat-card">
+                    <div class="text-2xl font-black text-yellow-300 att-stat-val">${girls.length > 0 ? Math.round(girls.reduce((s, g) => s + (attendanceMap[g.id]?.size || 0), 0) / girls.length) : 0}</div>
                     <div class="text-xs text-slate-500 mt-0.5">평균 출근일</div>
                 </div>
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-                    <div class="text-2xl font-black text-blue-400">${girls.reduce((s, g) => s + (attendanceMap[g.id]?.size || 0), 0)}</div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center att-stat-card">
+                    <div class="text-2xl font-black text-blue-400 att-stat-val">${girls.reduce((s, g) => s + (attendanceMap[g.id]?.size || 0), 0)}</div>
                     <div class="text-xs text-slate-500 mt-0.5">총 출근 누적</div>
                 </div>
             </div>`}
@@ -549,8 +549,50 @@ const StaffPage = {
             App.renderPage('staff');
         });
 
-        // 출근 저장: 셀 클릭 시 대기비 추가/삭제
+        // 출근 저장: 셀 클릭 시 대기비 추가/삭제 (DOM 직접 업데이트 - 깜박임 없음)
         const enteredBy = await Auth.getStaffId();
+        const _girlsCache = await DB.getAll('girls');
+
+        // 소계·일별합계·통계카드 DOM 업데이트 헬퍼
+        const _refreshStats = () => {
+            // 각 행의 소계 업데이트
+            container.querySelectorAll('tbody tr[data-girl-row]').forEach(row => {
+                const gid = row.dataset.girlRow;
+                const count = row.querySelectorAll('.att-cell[data-worked="true"]').length;
+                const span = row.querySelector('.att-subtotal');
+                if (span) {
+                    span.textContent = count + '일';
+                    span.className = count >= 25 ? 'att-subtotal text-emerald-400' : count >= 20 ? 'att-subtotal text-yellow-300' : 'att-subtotal text-slate-300';
+                }
+            });
+            // 일별 합계 업데이트
+            container.querySelectorAll('tfoot td[data-day-total]').forEach(td => {
+                const d = parseInt(td.dataset.dayTotal);
+                const cnt = container.querySelectorAll(`.att-cell[data-worked="true"][data-date$="-${String(d).padStart(2,'0')}"]`).length;
+                td.innerHTML = `<span class="text-[10px] font-bold ${cnt > 0 ? 'text-blue-400' : 'text-slate-700'}">${cnt > 0 ? cnt : '-'}</span>`;
+            });
+            // tfoot 소계
+            const totalCell = container.querySelector('tfoot td.att-total-days');
+            if (totalCell) {
+                const total = container.querySelectorAll('.att-cell[data-worked="true"]').length;
+                totalCell.textContent = total + '일';
+            }
+            // 통계 카드
+            const allWorked = {};
+            container.querySelectorAll('tbody tr[data-girl-row]').forEach(row => {
+                allWorked[row.dataset.girlRow] = row.querySelectorAll('.att-cell[data-worked="true"]').length;
+            });
+            const counts = Object.values(allWorked);
+            const totalGirls = counts.length;
+            const fullAtt = counts.filter(c => c >= 25).length;
+            const avg = totalGirls > 0 ? Math.round(counts.reduce((a, b) => a + b, 0) / totalGirls) : 0;
+            const totalDays = counts.reduce((a, b) => a + b, 0);
+            const cards = container.querySelectorAll('.att-stat-card');
+            if (cards[1]) cards[1].querySelector('.att-stat-val').textContent = fullAtt;
+            if (cards[2]) cards[2].querySelector('.att-stat-val').textContent = avg;
+            if (cards[3]) cards[3].querySelector('.att-stat-val').textContent = totalDays;
+        };
+
         container.querySelectorAll('.att-cell').forEach(cell => {
             cell.addEventListener('click', async () => {
                 if (!enteredBy && !Auth.isAdmin()) return;
@@ -558,10 +600,17 @@ const StaffPage = {
                 const girlName = cell.dataset.girlName;
                 const date = cell.dataset.date;
                 const worked = cell.dataset.worked === 'true';
-                const girls = await DB.getAll('girls');
-                const girl = girls.find(x => x.id === girlId);
+                const girl = _girlsCache.find(x => x.id === girlId);
                 if (!girl) return;
                 const standbyFee = girl.standby_fee || 150000;
+
+                // 즉시 UI 반영 (낙관적 업데이트)
+                const newWorked = !worked;
+                cell.dataset.worked = String(newWorked);
+                cell.innerHTML = newWorked
+                    ? '<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-white font-bold text-[9px]">✓</span>'
+                    : '<span class="inline-block w-5 h-5 rounded-full bg-slate-800/50"></span>';
+                _refreshStats();
 
                 if (worked) {
                     const { data: payData } = await window._supabase
@@ -577,10 +626,14 @@ const StaffPage = {
                         await DB.delete('girl_payments', existing.id);
                         App.toast(girlName + ' ' + date + ' 출근 취소', 'success');
                     } else {
+                        // 롤백
+                        cell.dataset.worked = 'true';
+                        cell.innerHTML = '<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-white font-bold text-[9px]">✓</span>';
+                        _refreshStats();
                         App.toast('취소할 출근 기록을 찾을 수 없습니다.', 'error');
                     }
                 } else {
-                    await DB.insert('girl_payments', {
+                    const result = await DB.insert('girl_payments', {
                         girl_id: girlId,
                         date,
                         type: 'standby',
@@ -588,9 +641,16 @@ const StaffPage = {
                         memo: '출근표',
                         entered_by: enteredBy || undefined
                     });
-                    App.toast(girlName + ' ' + date + ' 출근 저장', 'success');
+                    if (result) {
+                        App.toast(girlName + ' ' + date + ' 출근 저장', 'success');
+                    } else {
+                        // 롤백
+                        cell.dataset.worked = 'false';
+                        cell.innerHTML = '<span class="inline-block w-5 h-5 rounded-full bg-slate-800/50"></span>';
+                        _refreshStats();
+                        App.toast('저장에 실패했습니다.', 'error');
+                    }
                 }
-                App.renderPage('staff');
             });
         });
     },
