@@ -17,8 +17,6 @@ const SalesRankingPage = {
 
         const branches = await DB.getAll('branches');
         const staff = await DB.getAll('staff');
-        const allSales = await DB.getAll('daily_sales');
-        const allRooms = await DB.getAll('daily_sale_rooms');
 
         // 지점 목록 구성
         const branchMap = new Map();
