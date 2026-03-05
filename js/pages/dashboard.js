@@ -187,7 +187,9 @@ const DashboardPage = {
         };
 
         const todayStr = Format.today();
-        const todaySalesRaw = allSalesRaw.filter(s => s.date === todayStr && s.entered_by);
+        // 마감현황은 오늘 날짜 기준 (기간 필터와 무관하게 항상 오늘 데이터)
+        const todaySalesAll = await DB.getFiltered('daily_sales', { from: todayStr, to: todayStr, orderField: 'date', orderAsc: false });
+        const todaySalesRaw = todaySalesAll.filter(s => s.entered_by);
         // 지점 필터 적용 (마감현황도)
         const todaySales = this.filterBranch
             ? todaySalesRaw.filter(s => filteredStaffIds.includes(s.entered_by))
@@ -609,9 +611,10 @@ const DashboardPage = {
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 p-4 md:p-6">
                     ${liquors.map(l => {
-                        const inv = inventory.find(i => i.liquor_id === l.id);
-                        const qty = inv ? inv.quantity : 0;
-                        const threshold = inv ? inv.alert_threshold : 10;
+                        const recs = inventory.filter(i => i.liquor_id === l.id);
+                        const branchRecs = recs.filter(i => i.branch_id != null);
+                        const qty = branchRecs.length ? branchRecs.reduce((s, i) => s + (i.quantity || 0), 0) : recs.reduce((s, i) => s + (i.quantity || 0), 0);
+                        const threshold = (recs[0] || {}).alert_threshold || 10;
                         const pct = Math.min(100, (qty / (threshold * 5)) * 100);
                         const colorCls = qty <= threshold ? 'red-300' : qty <= threshold * 2 ? 'amber-300' : 'emerald-500';
                         return `<div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
