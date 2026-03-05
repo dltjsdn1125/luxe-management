@@ -16,10 +16,16 @@ const ExpensesPage = {
         // 기간 필터 적용
         expenses = PeriodFilter.filterByDate(expenses, 'date', range.from, range.to);
 
-        // 직원 로그인이면 본인 입력 지출만
+        // 지점 계정: 본인 지점 지출 전부
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
-            expenses = expenses.filter(e => e.entered_by === staffId);
+            const myStaff = staff.find(s => s.id === staffId);
+            if (myStaff?.branch_name) {
+                const branchStaffIds = staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id);
+                expenses = expenses.filter(e => branchStaffIds.includes(e.entered_by));
+            } else {
+                expenses = expenses.filter(e => e.entered_by === staffId);
+            }
         } else if (this.filterBranch) {
             const branchStaffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
             expenses = expenses.filter(e => branchStaffIds.includes(e.entered_by));

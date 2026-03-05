@@ -87,31 +87,30 @@ const Auth = {
         await this._ensureSessionStaffId(staffList);
     },
 
-    // 세션의 staff_id 보장
+    // 세션의 staff_id 보장 (관리자/지점 데이터 동기화)
     async _ensureSessionStaffId(staffList) {
         const session = this.getSession();
         if (!session) return;
         if (!staffList) staffList = await DB.getAll('staff');
+        if (session.role !== 'staff') return;
 
-        if (session.role === 'staff' && !session.staff_id) {
-            const matchedStaff = staffList.find(s => s.name === session.name);
-            if (matchedStaff) {
-                session.staff_id = matchedStaff.id;
+        // 1) DB users에서 staff_id 재조회 (동기화 후 갱신 반영)
+        const users = await DB.getAll('users');
+        const user = users.find(u => u.id === session.id);
+        if (user?.staff_id) {
+            if (session.staff_id !== user.staff_id) {
+                session.staff_id = user.staff_id;
                 this._setSession(session);
             }
+            return;
         }
 
-        if (session.role === 'staff' && !session.staff_id) {
-            const users = await DB.getAll('users');
-            const user = users.find(u => u.id === session.id);
-            if (user) {
-                const matchedStaff = staffList.find(s => s.name === user.name);
-                if (matchedStaff) {
-                    await DB.update('users', user.id, { staff_id: matchedStaff.id });
-                    session.staff_id = matchedStaff.id;
-                    this._setSession(session);
-                }
-            }
+        // 2) 이름으로 staff 매칭
+        const matchedStaff = staffList.find(s => s.name === session.name) || staffList.find(s => s.name === user?.name);
+        if (matchedStaff) {
+            if (user) await DB.update('users', user.id, { staff_id: matchedStaff.id });
+            session.staff_id = matchedStaff.id;
+            this._setSession(session);
         }
     },
 
@@ -184,7 +183,12 @@ const Auth = {
             }
         }
 
-        return this._buildSession(user);
+        const session = this._buildSession(user);
+        if (session && session.role === 'staff') {
+            await this.syncStaffAccounts();
+            await this._ensureSessionStaffId();
+        }
+        return session;
     },
 
     _buildSession(user, authId) {

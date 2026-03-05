@@ -37,7 +37,14 @@ const SettlementPage = {
         let settlements = (await DB.getAll('daily_sales')).sort((a, b) => b.date.localeCompare(a.date));
         if (!Auth.isAdmin()) {
             const staffId = await Auth.getStaffId();
-            settlements = settlements.filter(s => s.entered_by === staffId);
+            const allStaff = await DB.getAll('staff');
+            const myStaff = allStaff.find(s => s.id === staffId);
+            if (myStaff?.branch_name) {
+                const branchStaffIds = allStaff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id);
+                settlements = settlements.filter(s => branchStaffIds.includes(s.entered_by));
+            } else {
+                settlements = settlements.filter(s => s.entered_by === staffId);
+            }
         } else if (this.filterBranch) {
             const allStaff = await DB.getAll('staff');
             const branchStaffIds = allStaff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);

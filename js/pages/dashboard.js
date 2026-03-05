@@ -787,10 +787,16 @@ const DashboardPage = {
             return;
         }
 
-        // entered_by 또는 staff_id로 매칭 (일관성 보장)
-        const mySalesRaw = (await DB.getAll('daily_sales')).filter(s => s.entered_by === staffId);
-        const myReceivablesRaw = (await DB.getAll('receivables')).filter(r => r.staff_id === staffId || r.entered_by === staffId);
-        const myWariRaw = (await DB.getAll('wari')).filter(w => w.staff_id === staffId);
+        const allStaff = await DB.getAll('staff');
+        const branchStaffIds = myStaff?.branch_name
+            ? allStaff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id)
+            : [staffId];
+        const isBranch = branchStaffIds.length > 1 || (branchStaffIds.length === 1 && myStaff?.branch_name);
+        const labelMy = isBranch ? (myStaff?.branch_name || '지점') : '내';
+
+        const mySalesRaw = (await DB.getAll('daily_sales')).filter(s => branchStaffIds.includes(s.entered_by));
+        const myReceivablesRaw = (await DB.getAll('receivables')).filter(r => branchStaffIds.includes(r.staff_id) || branchStaffIds.includes(r.entered_by));
+        const myWariRaw = (await DB.getAll('wari')).filter(w => branchStaffIds.includes(w.staff_id));
 
         const mySales = PeriodFilter.filterByDate(mySalesRaw, 'date', range.from, range.to).sort((a, b) => b.date.localeCompare(a.date));
         const myReceivables = PeriodFilter.filterByDate(myReceivablesRaw, 'date', range.from, range.to);
@@ -807,7 +813,7 @@ const DashboardPage = {
         <div class="max-w-[1600px] mx-auto p-4 md:p-6 lg:p-10">
             <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                 <div>
-                    <h2 class="text-2xl md:text-3xl font-bold text-white">${session.name}님의 대시보드</h2>
+                    <h2 class="text-2xl md:text-3xl font-bold text-white">${isBranch ? myStaff.branch_name + ' 지점 대시보드' : session.name + '님의 대시보드'}</h2>
                     <p class="text-slate-500 text-sm mt-1">${Format.dateKR(new Date())} · ${myStaff ? (myStaff.role === 'president' ? '영업사장' : myStaff.role === 'manager' ? '실장' : '스탭') : '직원'}</p>
                 </div>
                 <button onclick="App.navigate('settlement')" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">+ 새 정산 입력</button>
@@ -817,7 +823,7 @@ const DashboardPage = {
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
                 <div class="bg-slate-900 p-4 md:p-6 rounded-xl border border-slate-800">
-                    <p class="text-slate-500 text-xs uppercase tracking-wider font-semibold mb-2">내 총 매출</p>
+                    <p class="text-slate-500 text-xs uppercase tracking-wider font-semibold mb-2">${labelMy} 총 매출</p>
                     <h3 class="text-2xl font-bold text-white">${Format.won(totalRevenue)}</h3>
                     <p class="text-xs text-slate-500 mt-1">${mySales.length}건 정산</p>
                 </div>
@@ -826,13 +832,13 @@ const DashboardPage = {
                     <h3 class="text-2xl font-bold gold-gradient-text">${Format.won(totalWari)}</h3>
                 </div>
                 <div class="bg-slate-900 p-4 md:p-6 rounded-xl border border-slate-800">
-                    <p class="text-slate-500 text-xs uppercase tracking-wider font-semibold mb-2">내 외상 잔액</p>
+                    <p class="text-slate-500 text-xs uppercase tracking-wider font-semibold mb-2">${labelMy} 외상 잔액</p>
                     <h3 class="text-2xl font-bold ${totalReceivable > 0 ? 'text-amber-300' : 'text-white'}">${Format.won(totalReceivable)}</h3>
                 </div>
             </div>
 
             <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden mb-8">
-                <div class="p-4 md:p-6 border-b border-slate-800"><h4 class="font-bold text-lg">내 정산 내역</h4></div>
+                <div class="p-4 md:p-6 border-b border-slate-800"><h4 class="font-bold text-lg">${labelMy} 정산 내역</h4></div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm" style="white-space:nowrap;min-width:400px"><thead><tr class="bg-slate-800/50 text-slate-500 text-[10px] uppercase tracking-wider">
                         <th class="px-3 md:px-6 py-3">날짜</th><th class="px-3 md:px-6 py-3">주대</th><th class="px-3 md:px-6 py-3 hidden sm:table-cell">방 수</th><th class="px-3 md:px-6 py-3">정산금</th>
@@ -844,7 +850,7 @@ const DashboardPage = {
             </div>
 
             <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-                <div class="p-4 md:p-6 border-b border-slate-800"><h4 class="font-bold text-lg">내 외상 현황</h4></div>
+                <div class="p-4 md:p-6 border-b border-slate-800"><h4 class="font-bold text-lg">${labelMy} 외상 현황</h4></div>
                 <div class="p-4 space-y-3">
                     ${myReceivables.filter(r => r.status !== 'paid').length > 0 ? myReceivables.filter(r => r.status !== 'paid').map(r => {
                         const isOverdue = r.due_date && new Date(r.due_date) < new Date();

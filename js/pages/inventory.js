@@ -32,9 +32,13 @@ const InventoryPage = {
     _getInvForLiquor(inventory, liquorId, branchId) {
         if (!inventory.length) return null;
         const hasBranch = inventory.some(i => 'branch_id' in i);
-        if (!hasBranch || !branchId) return inventory.find(i => i.liquor_id === liquorId);
-        return inventory.find(i => i.liquor_id === liquorId && i.branch_id === branchId)
-            || inventory.find(i => i.liquor_id === liquorId && !i.branch_id);
+        if (!hasBranch) return inventory.find(i => i.liquor_id === liquorId);
+        // 지점 선택 시: 해당 지점 재고만 사용 (legacy fallback 제거 → 지점별로 다른 수치 표시)
+        if (branchId) {
+            return inventory.find(i => i.liquor_id === liquorId && i.branch_id === branchId) || null;
+        }
+        // 전체 선택 시: 공용 재고(branch_id NULL) 사용
+        return inventory.find(i => i.liquor_id === liquorId && !i.branch_id) || inventory.find(i => i.liquor_id === liquorId);
     },
 
     async render(container) {
@@ -54,7 +58,13 @@ const InventoryPage = {
 
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
-            orders = orders.filter(o => o.entered_by === staffId);
+            const myStaff = staff.find(s => s.id === staffId);
+            if (myStaff?.branch_name) {
+                const branchStaffIds = staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id);
+                orders = orders.filter(o => branchStaffIds.includes(o.entered_by));
+            } else {
+                orders = orders.filter(o => o.entered_by === staffId);
+            }
         } else if (this.filterBranch) {
             const branchStaffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
             orders = orders.filter(o => branchStaffIds.includes(o.entered_by));

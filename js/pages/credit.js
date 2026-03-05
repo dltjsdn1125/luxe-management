@@ -16,10 +16,16 @@ const CreditPage = {
         // 기간 필터 적용
         receivables = PeriodFilter.filterByDate(receivables, 'date', range.from, range.to);
 
-        // 직원 로그인이면 본인 담당 외상만
+        // 지점 계정: 본인 지점 외상 전부 (관리자와 동일 데이터)
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
-            receivables = receivables.filter(r => r.staff_id === staffId || r.entered_by === staffId);
+            const myStaff = staff.find(s => s.id === staffId);
+            if (myStaff?.branch_name) {
+                const branchStaffIds = staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id);
+                receivables = receivables.filter(r => branchStaffIds.includes(r.staff_id) || branchStaffIds.includes(r.entered_by));
+            } else {
+                receivables = receivables.filter(r => r.staff_id === staffId || r.entered_by === staffId);
+            }
         } else if (this.filterBranch) {
             const branchStaffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
             receivables = receivables.filter(r => branchStaffIds.includes(r.staff_id) || branchStaffIds.includes(r.entered_by));

@@ -12,30 +12,46 @@ const StaffPage = {
 
     async render(container) {
         const isAdmin = Auth.isAdmin();
-        let staff = await DB.getAll('staff');
+        const allStaff = await DB.getAll('staff');
         const branches = await DB.getAll('branches');
+        let staff = allStaff;
 
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
-            staff = staff.filter(s => s.id === staffId);
+            const myStaff = allStaff.find(s => s.id === staffId);
+            if (!myStaff || !myStaff.branch_name) {
+                staff = staffId ? [allStaff.find(s => s.id === staffId)].filter(Boolean) : [];
+            } else {
+                staff = allStaff.filter(s => s.branch_name === myStaff.branch_name);
+            }
         }
 
         if (!this.attendanceMonth) {
             this.attendanceMonth = Format.today().substring(0, 7);
         }
 
-        // 지점 목록 구성 (branches 테이블 + staff.branch_name 기반)
+        // 지점 목록: 관리자는 전체, 지점계정은 본인 지점만
         const branchMap = new Map();
-        branches.forEach(b => branchMap.set(b.name, b));
-        staff.forEach(s => {
-            if (s.branch_name && !branchMap.has(s.branch_name)) {
-                branchMap.set(s.branch_name, { id: 'v_' + s.branch_name, name: s.branch_name });
+        if (isAdmin) {
+            branches.forEach(b => branchMap.set(b.name, b));
+            staff.forEach(s => {
+                if (s.branch_name && !branchMap.has(s.branch_name)) {
+                    branchMap.set(s.branch_name, { id: 'v_' + s.branch_name, name: s.branch_name });
+                }
+            });
+        } else {
+            const myBranch = staff[0]?.branch_name;
+            if (myBranch) {
+                const b = branches.find(x => x.name === myBranch) || { id: 'v_' + myBranch, name: myBranch };
+                branchMap.set(myBranch, b);
             }
-        });
+        }
         const branchList = [...branchMap.values()];
 
         if (!this.selectedBranchName && branchList.length > 0) {
             this.selectedBranchName = branchList[0].name;
+        } else if (!isAdmin && staff[0]?.branch_name && this.selectedBranchName !== staff[0].branch_name) {
+            this.selectedBranchName = staff[0].branch_name;
         }
 
         const tabs = [
@@ -459,12 +475,10 @@ const StaffPage = {
                                         const worked = attendanceMap[g.id]?.has(d);
                                         const dow = new Date(yr, mo - 1, d).getDay();
                                         const isSun = dow === 0;
-                                        return `<td class="px-0.5 py-1.5 text-center ${isSun ? 'bg-red-950/20' : ''}">
-                                            ${worked
-                                                ? `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-white font-bold text-[9px]">✓</span>`
-                                                : `<span class="inline-block w-5 h-5 rounded-full bg-slate-800/50"></span>`
-                                            }
-                                        </td>`;
+                                        const dateStr = yr + '-' + String(mo).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+                                        return '<td class="px-0.5 py-1.5 text-center att-cell ' + (isSun ? 'bg-red-950/20 ' : '') + 'cursor-pointer hover:bg-slate-700/50" data-girl-id="' + g.id + '" data-girl-name="' + (g.name || '').replace(/"/g,'&quot;') + '" data-date="' + dateStr + '" data-worked="' + worked + '">' +
+                                            (worked ? '<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-white font-bold text-[9px]">✓</span>' : '<span class="inline-block w-5 h-5 rounded-full bg-slate-800/50"></span>') +
+                                        '</td>';
                                     }).join('')}
                                     <td class="px-3 py-2 text-right font-bold border-l border-slate-800">
                                         <span class="${workDays >= 25 ? 'text-emerald-400' : workDays >= 20 ? 'text-yellow-300' : 'text-slate-300'}">${workDays}일</span>
@@ -518,6 +532,42 @@ const StaffPage = {
         document.getElementById('att-next-month')?.addEventListener('click', () => {
             this.attendanceMonth = nextStr;
             App.renderPage('staff');
+        });
+
+        // 출근 저장: 셀 클릭 시 대기비 추가/삭제
+        const enteredBy = await Auth.getStaffId();
+        container.querySelectorAll('.att-cell').forEach(cell => {
+            cell.addEventListener('click', async () => {
+                if (!enteredBy && !Auth.isAdmin()) return;
+                const girlId = cell.dataset.girlId;
+                const girlName = cell.dataset.girlName;
+                const date = cell.dataset.date;
+                const worked = cell.dataset.worked === 'true';
+                const girls = await DB.getAll('girls');
+                const girl = girls.find(x => x.id === girlId);
+                if (!girl) return;
+                const standbyFee = girl.standby_fee || 150000;
+
+                if (worked) {
+                    const allPay = await DB.getAll('girl_payments');
+                    const existing = allPay.find(p => p.girl_id === girlId && p.date === date && p.type === 'standby');
+                    if (existing) {
+                        await DB.delete('girl_payments', existing.id);
+                        App.toast(girlName + ' ' + date + ' 출근 취소', 'success');
+                    }
+                } else {
+                    await DB.insert('girl_payments', {
+                        girl_id: girlId,
+                        date,
+                        type: 'standby',
+                        amount: standbyFee,
+                        memo: '출근표',
+                        entered_by: enteredBy || undefined
+                    });
+                    App.toast(girlName + ' ' + date + ' 출근 저장', 'success');
+                }
+                App.renderPage('staff');
+            });
         });
     },
 
