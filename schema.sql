@@ -23,7 +23,7 @@ CREATE TABLE staff (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name TEXT NOT NULL,
     branch_name TEXT,
-    role TEXT NOT NULL CHECK (role IN ('president', 'manager', 'staff')),
+    role TEXT NOT NULL CHECK (role IN ('president', 'manager', 'staff', 'other')),
     hire_date DATE,
     pay_date INTEGER DEFAULT 25,
     salary INTEGER DEFAULT 0,
