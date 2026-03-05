@@ -387,7 +387,6 @@ const StaffPage = {
     // ─── 탭3: 아가씨 출근표 ───────────────────────────────────────────────────
     async _renderAttendance(container, staff, isAdmin) {
         let girls = await DB.getAll('girls');
-        let payments = await DB.getAll('girl_payments');
 
         // 지점 필터
         if (this.selectedBranchName) {
@@ -396,11 +395,26 @@ const StaffPage = {
             girls = girls.filter(g => bsIds.includes(g.staff_id));
         }
         const girlIds = girls.map(g => g.id);
-        payments = payments.filter(p => girlIds.includes(p.girl_id));
 
+        // 해당 월 + 해당 아가씨만 직접 쿼리 (1000건 제한 우회)
         const month = this.attendanceMonth;
+        const monthStart = month + '-01';
         const [yr, mo] = month.split('-').map(Number);
         const daysInMonth = new Date(yr, mo, 0).getDate();
+        const monthEnd = month + '-' + String(daysInMonth).padStart(2, '0');
+
+        let payments = [];
+        if (girlIds.length > 0) {
+            const { data, error } = await window._supabase
+                .from('girl_payments')
+                .select('*')
+                .eq('_deleted', false)
+                .in('girl_id', girlIds)
+                .gte('date', monthStart)
+                .lte('date', monthEnd);
+            if (!error && data) payments = data;
+        }
+
         const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
         // 날짜별 출근 맵: girlId -> Set of day numbers
