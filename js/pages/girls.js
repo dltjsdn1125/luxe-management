@@ -155,6 +155,14 @@ const GirlsPage = {
         const allBranchStaffIds = staff.filter(s => s.branch_name).map(s => s.id);
         const unassignedGirls = girls.filter(g => !allBranchStaffIds.includes(g.staff_id));
 
+        // 최근 지급 내역: 지점 필터 적용
+        let recentPayments = payments;
+        if (isAdmin && this.filterBranch) {
+            const filterStaffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
+            const filterGirlIds = girls.filter(g => filterStaffIds.includes(g.staff_id)).map(g => g.id);
+            recentPayments = payments.filter(p => filterGirlIds.includes(p.girl_id));
+        }
+
         container.innerHTML = `
         <div class="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -235,8 +243,12 @@ const GirlsPage = {
 
             <!-- 최근 지급 내역 -->
             <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-                <div class="p-4 border-b border-slate-800">
-                    <h3 class="font-bold">최근 지급 내역</h3>
+                <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                    <h3 class="font-bold flex items-center gap-2">
+                        최근 지급 내역
+                        ${isAdmin && this.filterBranch ? `<span class="text-xs font-normal text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-full">${this.filterBranch}</span>` : ''}
+                    </h3>
+                    <span class="text-[10px] text-slate-500">${recentPayments.length}건</span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left whitespace-nowrap" style="white-space:nowrap;min-width:500px">
@@ -244,26 +256,29 @@ const GirlsPage = {
                             <tr>
                                 <th class="px-4 md:px-6 py-3">날짜</th>
                                 <th class="px-4 md:px-6 py-3">이름</th>
+                                <th class="px-4 md:px-6 py-3 hidden sm:table-cell">담당직원</th>
                                 <th class="px-4 md:px-6 py-3">유형</th>
                                 <th class="px-4 md:px-6 py-3 text-right">금액</th>
                                 <th class="px-4 md:px-6 py-3 hidden sm:table-cell">메모</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-800">
-                            ${payments.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20).map(p => {
+                            ${recentPayments.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30).map(p => {
                                 const g = girls.find(girl => girl.id === p.girl_id);
+                                const s = g ? staff.find(st => st.id === g.staff_id) : null;
                                 const typeLabel = p.type === 'standby' ? '대기비' : p.type === 'full_attendance' ? '만근비' : '이벤트';
                                 const typeColor = p.type === 'standby' ? 'blue' : p.type === 'full_attendance' ? 'emerald' : 'purple';
                                 return `
                                 <tr class="hover:bg-slate-800/30">
-                                    <td class="px-4 md:px-6 py-3 text-slate-400 font-mono">${p.date}</td>
+                                    <td class="px-4 md:px-6 py-3 text-slate-400 font-mono text-xs">${p.date}</td>
                                     <td class="px-4 md:px-6 py-3 text-white font-medium">${g ? g.name : '-'}</td>
+                                    <td class="px-4 md:px-6 py-3 text-slate-400 text-xs hidden sm:table-cell">${s ? s.name : '-'}</td>
                                     <td class="px-4 md:px-6 py-3"><span class="px-2 py-0.5 bg-${typeColor}-500/10 text-${typeColor}-400 text-[10px] font-bold rounded">${typeLabel}</span></td>
                                     <td class="px-4 md:px-6 py-3 text-right font-mono text-white">${Format.won(p.amount)}</td>
                                     <td class="px-4 md:px-6 py-3 text-slate-500 text-xs hidden sm:table-cell">${p.memo || '-'}</td>
                                 </tr>`;
                             }).join('')}
-                            ${payments.length === 0 ? `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-500">지급 내역이 없습니다.</td></tr>` : ''}
+                            ${recentPayments.length === 0 ? `<tr><td colspan="6" class="px-6 py-12 text-center text-slate-500">지급 내역이 없습니다.</td></tr>` : ''}
                         </tbody>
                     </table>
                 </div>

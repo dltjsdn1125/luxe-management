@@ -1,6 +1,8 @@
 // 주류 관리 페이지
 const InventoryPage = {
-    filterStaffId: null,
+    filterBranch: null,   // null = 전체, 'string' = 지점명
+    filterStaffId: null,  // 하위 호환
+    _expandedBranches: new Set(),
     periodType: 'today',
     customFrom: null,
     customTo: null,
@@ -14,8 +16,12 @@ const InventoryPage = {
     async _getEffectiveBranchId() {
         const staff = await DB.getAll('staff');
         const branches = await DB.getAll('branches');
+        // 관리자 + 지점 필터 선택 시 해당 지점 ID
+        if (Auth.isAdmin() && this.filterBranch) {
+            const b = branches.find(x => x.name === this.filterBranch);
+            return b ? b.id : null;
+        }
         let staffId = await Auth.getStaffId();
-        if (Auth.isAdmin() && this.filterStaffId) staffId = this.filterStaffId;
         if (!staffId) return null;
         const s = staff.find(x => x.id === staffId);
         if (!s?.branch_name) return null;
@@ -43,16 +49,137 @@ const InventoryPage = {
 
         orders = PeriodFilter.filterByDate(orders, 'date', range.from, range.to);
 
+        // 지점 목록
+        const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
+
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
             orders = orders.filter(o => o.entered_by === staffId);
-        } else if (this.filterStaffId) {
-            orders = orders.filter(o => o.entered_by === this.filterStaffId);
+        } else if (this.filterBranch) {
+            const branchStaffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
+            orders = orders.filter(o => branchStaffIds.includes(o.entered_by));
         }
 
         // 판매 데이터 (정산에서 추출)
         const allSales = await DB.getAll('daily_sales');
         const salesInRange = PeriodFilter.filterByDate(allSales, 'date', range.from, range.to);
+
+        // 발주내역: 지점별 → 직원별 아코디언 구조 생성
+        const buildOrderAccordion = (ordersToShow) => {
+            if (!isAdmin) {
+                // 비관리자: 단순 테이블
+                return ordersToShow.map(o => {
+                    const lq = liquors.find(l => l.id === o.liquor_id);
+                    return `<tr class="hover:bg-slate-800/30">
+                        <td class="px-4 py-3 text-slate-400 font-mono text-xs">${o.date}</td>
+                        <td class="px-4 py-3 font-semibold text-white">${lq ? lq.name : o.liquor_name || '-'}</td>
+                        <td class="px-4 py-3 text-center font-mono text-emerald-500">+${o.quantity}</td>
+                        <td class="px-4 py-3 text-slate-500 hidden sm:table-cell">${o.supplier || '-'}</td>
+                        <td class="px-4 py-3 text-right font-mono text-white">${Format.won(o.total_cost)}</td>
+                        <td class="px-4 py-3 text-right text-slate-500 text-xs">-</td>
+                    </tr>`;
+                }).join('');
+            }
+
+            // 관리자: 지점별 그룹핑
+            const branchesToShow = this.filterBranch ? [this.filterBranch] : branchNames;
+            let html = '';
+            branchesToShow.forEach(bn => {
+                const bStaff = staff.filter(s => s.branch_name === bn);
+                const bStaffIds = bStaff.map(s => s.id);
+                const bOrders = ordersToShow.filter(o => bStaffIds.includes(o.entered_by));
+                if (bOrders.length === 0) return;
+
+                const bTotal = bOrders.reduce((s, o) => s + (o.total_cost || 0), 0);
+                const bQty = bOrders.reduce((s, o) => s + (o.quantity || 0), 0);
+                const branchRowId = 'inv_branch_' + bn.replace(/\s/g, '_');
+                const isExpanded = this._expandedBranches.has(bn);
+
+                // 직원별 서브 행
+                const staffRows = bStaff.map(sv => {
+                    const sOrders = bOrders.filter(o => o.entered_by === sv.id);
+                    if (sOrders.length === 0) return '';
+                    const sTotal = sOrders.reduce((s, o) => s + (o.total_cost || 0), 0);
+                    const sQty = sOrders.reduce((s, o) => s + (o.quantity || 0), 0);
+                    const roleLabel = sv.role === 'president' ? '영업사장' : sv.role === 'manager' ? '영업실장' : '스탭';
+                    const roleColor = sv.role === 'president' ? 'text-yellow-300' : sv.role === 'manager' ? 'text-blue-300' : 'text-slate-400';
+                    // 직원 발주 세부 행
+                    const detailRows = sOrders.map(o => {
+                        const lq = liquors.find(l => l.id === o.liquor_id);
+                        return `<tr class="inv-staff-detail hidden bg-slate-950/60 border-l-2 border-blue-500/20" data-staff-group="${branchRowId}_${sv.id}">
+                            <td class="pl-16 pr-4 py-2 text-slate-500 font-mono text-[10px]">${o.date}</td>
+                            <td class="px-4 py-2 text-slate-300 text-xs">${lq ? lq.name : o.liquor_name || '-'}</td>
+                            <td class="px-4 py-2 text-center font-mono text-emerald-400 text-xs">+${o.quantity}</td>
+                            <td class="px-4 py-2 text-slate-500 text-xs hidden sm:table-cell">${o.supplier || '-'}</td>
+                            <td class="px-4 py-2 text-right font-mono text-slate-300 text-xs">${Format.won(o.total_cost)}</td>
+                            <td class="px-4 py-2"></td>
+                        </tr>`;
+                    }).join('');
+
+                    return `
+                    <tr class="inv-branch-detail hidden hover:bg-slate-800/20 cursor-pointer border-l-2 border-slate-700/50 inv-staff-toggle"
+                        data-branch-group="${branchRowId}" data-staff-id="${sv.id}" data-staff-group-id="${branchRowId}_${sv.id}">
+                        <td class="pl-10 pr-4 py-2.5">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-slate-600 text-sm">subdirectory_arrow_right</span>
+                                <span class="material-symbols-outlined text-slate-500 text-xs inv-staff-chevron transition-transform" data-staff-chevron="${branchRowId}_${sv.id}">chevron_right</span>
+                                <span class="${roleColor} text-[10px] font-bold">${roleLabel}</span>
+                                <span class="text-slate-300 text-xs font-semibold">${sv.name}</span>
+                                <span class="text-slate-600 text-[10px]">${sOrders.length}건</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-2.5 text-slate-300 text-xs font-mono" colspan="2">총 ${sQty}병</td>
+                        <td class="px-4 py-2.5 hidden sm:table-cell"></td>
+                        <td class="px-4 py-2.5 text-right font-mono text-slate-300 text-xs">${Format.won(sTotal)}</td>
+                        <td class="px-4 py-2.5"></td>
+                    </tr>
+                    ${detailRows}`;
+                }).join('');
+
+                html += `
+                <!-- 지점 헤더 행 -->
+                <tr class="inv-branch-header hover:bg-slate-800/50 cursor-pointer transition-colors border-b border-slate-700/50 inv-branch-toggle"
+                    data-branch-toggle="${branchRowId}" data-branch-name="${bn}">
+                    <td class="px-4 py-3.5">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-slate-500 text-base inv-branch-chevron transition-transform ${isExpanded ? 'rotate-90' : ''}" data-branch-chevron="${branchRowId}">chevron_right</span>
+                            <div class="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-blue-400 text-sm">store</span>
+                            </div>
+                            <div>
+                                <span class="font-bold text-white text-sm">${bn}</span>
+                                <span class="text-[10px] text-slate-500 ml-2">${bOrders.length}건 · ${bStaff.filter(sv => bOrders.some(o => o.entered_by === sv.id)).length}명</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3.5 text-right font-bold text-white" colspan="2">${bQty}병</td>
+                    <td class="px-4 py-3.5 hidden sm:table-cell"></td>
+                    <td class="px-4 py-3.5 text-right font-bold text-white">${Format.won(bTotal)}</td>
+                    <td class="px-4 py-3.5"></td>
+                </tr>
+                ${staffRows}`;
+            });
+
+            // 미분류(지점 없는 직원 발주)
+            const assignedStaffIds = staff.filter(s => s.branch_name).map(s => s.id);
+            const unassignedOrders = ordersToShow.filter(o => !assignedStaffIds.includes(o.entered_by));
+            if (unassignedOrders.length > 0) {
+                html += unassignedOrders.map(o => {
+                    const lq = liquors.find(l => l.id === o.liquor_id);
+                    const sv = staff.find(s => s.id === o.entered_by);
+                    return `<tr class="hover:bg-slate-800/30">
+                        <td class="px-4 py-3 text-slate-400 font-mono text-xs">${o.date}</td>
+                        <td class="px-4 py-3 font-semibold text-white">${lq ? lq.name : '-'}</td>
+                        <td class="px-4 py-3 text-center font-mono text-emerald-500">+${o.quantity}</td>
+                        <td class="px-4 py-3 text-slate-500 hidden sm:table-cell">${o.supplier || '-'}</td>
+                        <td class="px-4 py-3 text-right font-mono text-white">${Format.won(o.total_cost)}</td>
+                        <td class="px-4 py-3 text-xs text-slate-500">${sv ? sv.name : '-'}</td>
+                    </tr>`;
+                }).join('');
+            }
+
+            return html || `<tr><td colspan="6" class="px-6 py-12 text-center text-slate-500">발주 내역이 없습니다.</td></tr>`;
+        };
 
         container.innerHTML = `
         <div class="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
@@ -76,9 +203,13 @@ const InventoryPage = {
 
             ${PeriodFilter.renderUI(this.periodType, this.customFrom, this.customTo, 'iv')}
 
-            ${isAdmin ? `<div class="flex flex-wrap gap-2">
-                <button class="inv-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!this.filterStaffId ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-filter-staff="">전체</button>
-                ${staff.map(s => `<button class="inv-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${this.filterStaffId === s.id ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-filter-staff="${s.id}">${s.branch_name ? s.branch_name + '(' + s.name + ')' : s.name}</button>`).join('')}
+            ${isAdmin ? `
+            <!-- 지점 필터 탭 -->
+            <div class="flex flex-wrap gap-2 items-center">
+                <button class="inv-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!this.filterBranch ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="">
+                    전체 (${branchNames.length}개 지점)
+                </button>
+                ${branchNames.map(bn => `<button class="inv-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${this.filterBranch === bn ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="${bn}">${bn}</button>`).join('')}
             </div>` : ''}
 
             <!-- 재고 현황 카드 (지점별 필터) -->
@@ -149,36 +280,31 @@ const InventoryPage = {
                 </div>
             </div>
 
-            <!-- 발주 내역 -->
+            <!-- 발주 내역 (지점→직원 아코디언) -->
             <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-                <div class="p-4 border-b border-slate-800">
+                <div class="p-4 border-b border-slate-800 flex items-center justify-between">
                     <h3 class="font-bold flex items-center gap-2">
                         <span class="material-symbols-outlined text-blue-500">history</span> 발주 내역
+                        ${isAdmin && this.filterBranch ? `<span class="text-xs font-normal text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">${this.filterBranch}</span>` : ''}
                     </h3>
+                    ${isAdmin ? `<button id="btn-expand-all-inv" class="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">unfold_more</span> 전체 펼치기
+                    </button>` : ''}
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm whitespace-nowrap" style="white-space:nowrap;min-width:500px">
+                    <table class="w-full text-left text-sm" style="min-width:520px">
                         <thead class="bg-slate-800/50 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                             <tr>
-                                <th class="px-4 md:px-6 py-4">날짜</th>
-                                <th class="px-4 md:px-6 py-4">주종</th>
-                                <th class="px-4 md:px-6 py-4 text-center">수량</th>
-                                <th class="px-4 md:px-6 py-4 hidden sm:table-cell">공급업체</th>
-                                <th class="px-4 md:px-6 py-4 text-right">금액</th>
+                                <th class="px-4 py-3">지점 / 직원 / 날짜</th>
+                                <th class="px-4 py-3">주종</th>
+                                <th class="px-4 py-3 text-center">수량</th>
+                                <th class="px-4 py-3 hidden sm:table-cell">공급업체</th>
+                                <th class="px-4 py-3 text-right">금액</th>
+                                <th class="px-4 py-3"></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-800">
-                            ${orders.length > 0 ? orders.map(o => {
-                                const lq = liquors.find(l => l.id === o.liquor_id);
-                                return `
-                                <tr class="hover:bg-slate-800/30">
-                                    <td class="px-4 md:px-6 py-4 text-slate-400 font-mono">${o.date}</td>
-                                    <td class="px-4 md:px-6 py-4 font-semibold text-white">${lq ? lq.name : o.liquor_name || '-'}</td>
-                                    <td class="px-4 md:px-6 py-4 text-center font-mono text-emerald-500">+${o.quantity}</td>
-                                    <td class="px-4 md:px-6 py-4 text-slate-500 hidden sm:table-cell">${o.supplier || '-'}</td>
-                                    <td class="px-4 md:px-6 py-4 text-right font-mono text-white">${Format.won(o.total_cost)}</td>
-                                </tr>`;
-                            }).join('') : `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-500">발주 내역이 없습니다.</td></tr>`}
+                        <tbody class="divide-y divide-slate-800" id="inv-order-tbody">
+                            ${buildOrderAccordion(orders)}
                         </tbody>
                     </table>
                 </div>
@@ -319,11 +445,64 @@ const InventoryPage = {
             App.renderPage('inventory');
         });
 
-        container.querySelectorAll('.inv-filter').forEach(btn => {
+        // 지점 필터 탭
+        container.querySelectorAll('.inv-branch-filter').forEach(btn => {
             btn.addEventListener('click', () => {
-                this.filterStaffId = btn.dataset.filterStaff || null;
+                this.filterBranch = btn.dataset.branch || null;
+                this._expandedBranches.clear();
                 App.renderPage('inventory');
             });
+        });
+
+        // 발주 내역 지점 아코디언 토글
+        container.querySelectorAll('.inv-branch-toggle').forEach(row => {
+            row.addEventListener('click', () => {
+                const bid = row.dataset.branchToggle;
+                const bn = row.dataset.branchName;
+                const detailRows = container.querySelectorAll(`.inv-branch-detail[data-branch-group="${bid}"]`);
+                const chevron = container.querySelector(`[data-branch-chevron="${bid}"]`);
+                if (this._expandedBranches.has(bn)) {
+                    this._expandedBranches.delete(bn);
+                    detailRows.forEach(r => r.classList.add('hidden'));
+                    chevron?.classList.remove('rotate-90');
+                } else {
+                    this._expandedBranches.add(bn);
+                    detailRows.forEach(r => r.classList.remove('hidden'));
+                    chevron?.classList.add('rotate-90');
+                }
+            });
+        });
+
+        // 직원 서브 아코디언 토글
+        container.querySelectorAll('.inv-staff-toggle').forEach(row => {
+            row.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const sgid = row.dataset.staffGroupId;
+                const detailRows = container.querySelectorAll(`.inv-staff-detail[data-staff-group="${sgid}"]`);
+                const chevron = container.querySelector(`[data-staff-chevron="${sgid}"]`);
+                const isHidden = detailRows.length > 0 && detailRows[0].classList.contains('hidden');
+                detailRows.forEach(r => r.classList.toggle('hidden', !isHidden));
+                chevron?.classList.toggle('rotate-90', isHidden);
+            });
+        });
+
+        // 전체 펼치기/접기
+        let allExpanded = false;
+        document.getElementById('btn-expand-all-inv')?.addEventListener('click', (e) => {
+            allExpanded = !allExpanded;
+            container.querySelectorAll('.inv-branch-detail').forEach(r => r.classList.toggle('hidden', !allExpanded));
+            container.querySelectorAll('.inv-branch-chevron').forEach(c => c.classList.toggle('rotate-90', allExpanded));
+            if (allExpanded) {
+                container.querySelectorAll('.inv-branch-toggle').forEach(r => this._expandedBranches.add(r.dataset.branchName));
+            } else {
+                this._expandedBranches.clear();
+                container.querySelectorAll('.inv-staff-detail').forEach(r => r.classList.add('hidden'));
+                container.querySelectorAll('[data-staff-chevron]').forEach(c => c.classList.remove('rotate-90'));
+            }
+            const btn = e.currentTarget;
+            btn.innerHTML = allExpanded
+                ? '<span class="material-symbols-outlined text-sm">unfold_less</span> 전체 접기'
+                : '<span class="material-symbols-outlined text-sm">unfold_more</span> 전체 펼치기';
         });
 
         const addLiquorBtn = document.getElementById('btn-add-liquor');
