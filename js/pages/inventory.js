@@ -31,14 +31,15 @@ const InventoryPage = {
 
     _getInvForLiquor(inventory, liquorId, branchId) {
         if (!inventory.length) return null;
-        const hasBranch = inventory.some(i => 'branch_id' in i);
-        if (!hasBranch) return inventory.find(i => i.liquor_id === liquorId);
-        // 지점 선택 시: 해당 지점 재고만 사용 (legacy fallback 제거 → 지점별로 다른 수치 표시)
+        // 지점별 재고가 있으면 우선 사용, 없으면 공용 재고(branch_id NULL) fallback
         if (branchId) {
-            return inventory.find(i => i.liquor_id === liquorId && i.branch_id === branchId) || null;
+            return inventory.find(i => i.liquor_id === liquorId && i.branch_id === branchId)
+                || inventory.find(i => i.liquor_id === liquorId && !i.branch_id)
+                || inventory.find(i => i.liquor_id === liquorId);
         }
-        // 전체 선택 시: 공용 재고(branch_id NULL) 사용
-        return inventory.find(i => i.liquor_id === liquorId && !i.branch_id) || inventory.find(i => i.liquor_id === liquorId);
+        // 전체 선택 시: 공용 재고 우선, 없으면 아무 레코드
+        return inventory.find(i => i.liquor_id === liquorId && !i.branch_id)
+            || inventory.find(i => i.liquor_id === liquorId);
     },
 
     async render(container) {
