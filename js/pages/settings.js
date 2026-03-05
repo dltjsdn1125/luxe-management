@@ -1173,13 +1173,54 @@ const SettingsPage = {
             inp.click();
         });
         document.getElementById('btn-seed')?.addEventListener('click', async () => {
-            if (confirm('빈 테이블에 데모 데이터를 생성합니다.')) {
-                // seed_disabled 플래그 해제 (DB에서)
-                await window._supabase.from('settings').delete().eq('key', 'seed_disabled');
-                App.toast('데모 데이터 생성 중... 잠시 기다려주세요.', 'info');
-                await App.seedDemoData(); await Auth.syncStaffAccounts();
-                App.toast('데모 데이터가 생성되었습니다.', 'success'); App.renderPage('settings');
-            }
+            App.showModal('데모 데이터 생성', `
+                <div class="space-y-4">
+                    <div class="bg-amber-950/40 border border-amber-700/30 rounded-xl p-4">
+                        <div class="flex items-start gap-3">
+                            <span class="material-symbols-outlined text-amber-400 text-xl shrink-0 mt-0.5">warning</span>
+                            <div>
+                                <p class="text-sm font-bold text-amber-300 mb-1">기존 데이터 초기화 후 재생성</p>
+                                <p class="text-xs text-slate-400">중복 방지를 위해 기존 목업 데이터를 모두 삭제하고 새로 생성합니다.<br>관리자(admin/owner) 계정은 유지됩니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500">5개 지점 × 영업사장 5명 + 영업실장 5명 = 총 50명<br>각 직원별 매출 성향(S/A/B/C/D 티어) 시뮬레이션 데이터가 생성됩니다.</p>
+                </div>
+            `, async () => {
+                App.toast('기존 데이터 초기화 중...', 'info');
+
+                // admin/owner 계정 미리 저장
+                const { data: rawUsers } = await window._supabase.from('users').select('*');
+                const adminUsers = (rawUsers || []).filter(u => u.role === 'admin' || u.role === 'owner');
+
+                // 전체 초기화 (FK 순서 준수)
+                const tablesToClear = [
+                    'daily_sale_room_girls', 'daily_sale_room_liquors',
+                    'daily_sale_rooms', 'wari', 'receivable_payments',
+                    'receivables', 'girl_payments', 'daily_sales',
+                    'liquor_orders', 'liquor_inventory', 'expenses',
+                    'branch_settings', 'users', 'girls',
+                    'liquor', 'branches', 'staff',
+                    'expense_categories', 'liquor_categories',
+                    'base_expense_items', 'room_types', 'settings'
+                ];
+                for (const t of tablesToClear) {
+                    await DB.hardDeleteAll(t);
+                }
+
+                // admin/owner 계정 복구
+                for (const u of adminUsers) {
+                    const clean = { ...u };
+                    delete clean.id; delete clean.created_at; delete clean.updated_at;
+                    await DB.insert('users', clean);
+                }
+
+                App.toast('데모 데이터 생성 중... (잠시 기다려주세요)', 'info');
+                await App.seedDemoData();
+                await Auth.syncStaffAccounts();
+                App.toast('데모 데이터가 생성되었습니다!', 'success');
+                App.renderPage('settings');
+            });
         });
 
         document.getElementById('btn-clear-all')?.addEventListener('click', async () => {
