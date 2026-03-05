@@ -54,33 +54,124 @@ const SettlementPage = {
         const staff = await DB.getAll('staff');
         const isAdmin = Auth.isAdmin();
 
-        const sumRevenue = settlements.reduce((s, r) => s + (Number(r.total_revenue) || 0), 0);
-        const sumWari = settlements.reduce((s, r) => s + (Number(r.total_wari) || 0), 0);
-        const sumGirlPay = settlements.reduce((s, r) => s + (Number(r.total_girl_pay) || 0), 0);
-        const sumExpenses = settlements.reduce((s, r) => s + (Number(r.total_expenses) || 0), 0);
+        // ── 전체 합계 ──
+        const sumRevenue   = settlements.reduce((s, r) => s + (Number(r.total_revenue)    || 0), 0);
+        const sumWari      = settlements.reduce((s, r) => s + (Number(r.total_wari)       || 0), 0);
+        const sumGirlPay   = settlements.reduce((s, r) => s + (Number(r.total_girl_pay)   || 0), 0);
+        const sumExpenses  = settlements.reduce((s, r) => s + (Number(r.total_expenses)   || 0), 0);
         const sumDeductions = sumWari + sumGirlPay + sumExpenses;
         const sumNetProfit = sumRevenue - sumDeductions;
-        const sumSettlement = settlements.reduce((s, r) => s + (Number(r.net_settlement) || 0), 0);
+        const sumSettlement = settlements.reduce((s, r) => s + (Number(r.net_settlement)  || 0), 0);
 
-        const branchStats = {};
-        if (isAdmin) {
-            settlements.forEach(s => {
-                const sid = s.entered_by || 'unknown';
-                if (!branchStats[sid]) branchStats[sid] = { revenue: 0, wari: 0, girlPay: 0, expenses: 0, count: 0 };
-                branchStats[sid].revenue += Number(s.total_revenue) || 0;
-                branchStats[sid].wari += Number(s.total_wari) || 0;
-                branchStats[sid].girlPay += Number(s.total_girl_pay) || 0;
-                branchStats[sid].expenses += Number(s.total_expenses) || 0;
-                branchStats[sid].count += 1;
-            });
-        }
+        // ── 지점별 집계 ──
+        // branch_name 기준으로 그룹핑 (직원의 branch_name → 지점명)
+        const branchGroupMap = {};   // branchName → { revenue, wari, girlPay, expenses, settlement, count, staffMap }
+        settlements.forEach(sale => {
+            const s = staff.find(x => x.id === sale.entered_by);
+            const bn = (s && s.branch_name) ? s.branch_name : (s ? s.name : '기타');
+            if (!branchGroupMap[bn]) {
+                branchGroupMap[bn] = { revenue: 0, wari: 0, girlPay: 0, expenses: 0, settlement: 0, count: 0, staffMap: {} };
+            }
+            const bg = branchGroupMap[bn];
+            bg.revenue    += Number(sale.total_revenue)   || 0;
+            bg.wari       += Number(sale.total_wari)      || 0;
+            bg.girlPay    += Number(sale.total_girl_pay)  || 0;
+            bg.expenses   += Number(sale.total_expenses)  || 0;
+            bg.settlement += Number(sale.net_settlement)  || 0;
+            bg.count      += 1;
+            // 직원별 소계
+            const sid = sale.entered_by || 'unknown';
+            if (!bg.staffMap[sid]) bg.staffMap[sid] = { revenue: 0, wari: 0, girlPay: 0, expenses: 0, settlement: 0, count: 0, sales: [] };
+            const sm = bg.staffMap[sid];
+            sm.revenue    += Number(sale.total_revenue)   || 0;
+            sm.wari       += Number(sale.total_wari)      || 0;
+            sm.girlPay    += Number(sale.total_girl_pay)  || 0;
+            sm.expenses   += Number(sale.total_expenses)  || 0;
+            sm.settlement += Number(sale.net_settlement)  || 0;
+            sm.count      += 1;
+            sm.sales.push(sale);
+        });
+
+        const branchEntries = Object.entries(branchGroupMap).sort((a, b) => b[1].revenue - a[1].revenue);
+
+        // ── 지점별 아코디언 HTML 생성 ──
+        const buildBranchRows = (branchName, bg) => {
+            const netP = bg.revenue - bg.wari - bg.girlPay - bg.expenses;
+            const margin = bg.revenue > 0 ? Math.round(netP / bg.revenue * 100) : 0;
+            const share = sumRevenue > 0 ? (bg.revenue / sumRevenue * 100).toFixed(1) : '0.0';
+            const branchId = 'branch_' + branchName.replace(/\s/g, '_');
+
+            // 직원별 서브 행
+            const staffRows = Object.entries(bg.staffMap).map(([sid, sm]) => {
+                const sv = staff.find(x => x.id === sid);
+                const roleLabel = sv ? (sv.role === 'president' ? '영업사장' : sv.role === 'manager' ? '영업실장' : '스탭') : '';
+                const roleColor = sv ? (sv.role === 'president' ? 'text-yellow-300' : sv.role === 'manager' ? 'text-blue-300' : 'text-slate-400') : 'text-slate-400';
+                const smNet = sm.revenue - sm.wari - sm.girlPay - sm.expenses;
+                const smMargin = sm.revenue > 0 ? Math.round(smNet / sm.revenue * 100) : 0;
+                return `
+                <tr class="branch-detail-row hidden bg-slate-950/60 border-l-2 border-blue-500/30" data-branch-group="${branchId}">
+                    <td class="pl-10 pr-4 py-2.5">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-slate-600 text-sm">subdirectory_arrow_right</span>
+                            <span class="${roleColor} text-[10px] font-bold">${roleLabel}</span>
+                            <span class="text-slate-300 text-xs font-semibold">${sv ? sv.name : '알 수 없음'}</span>
+                            <span class="text-slate-600 text-[10px]">${sm.count}건</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono text-slate-200 text-xs">${Format.won(sm.revenue)}</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-yellow-300/70 text-xs">${Format.won(sm.wari)}</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-pink-400/70 text-xs">${Format.won(sm.girlPay)}</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-slate-500 text-xs">${Format.won(sm.expenses)}</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-xs ${smNet >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'}">${Format.won(smNet)}</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-xs ${smMargin >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'}">${smMargin}%</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-blue-400/70 text-xs">${Format.won(sm.settlement)}</td>
+                    <td class="px-4 py-2.5 text-right">
+                        <button class="text-[10px] text-blue-400 hover:underline btn-view-staff-sales" data-staff-id="${sid}" data-branch="${branchName}">내역보기</button>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            return `
+            <!-- 지점 헤더 행 (클릭으로 펼치기) -->
+            <tr class="branch-header-row hover:bg-slate-800/50 cursor-pointer transition-colors border-b border-slate-700/50" data-branch-toggle="${branchId}">
+                <td class="px-4 py-3.5">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-slate-500 text-base branch-chevron transition-transform" data-chevron="${branchId}">chevron_right</span>
+                        <div class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-blue-400 text-sm">store</span>
+                        </div>
+                        <div>
+                            <span class="font-bold text-white text-sm">${branchName}</span>
+                            <span class="text-[10px] text-slate-500 ml-2">${bg.count}건 · ${Object.keys(bg.staffMap).length}명</span>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-3.5 text-right font-bold text-white">${Format.won(bg.revenue)}</td>
+                <td class="px-4 py-3.5 text-right font-mono text-yellow-300 text-xs">${Format.won(bg.wari)}</td>
+                <td class="px-4 py-3.5 text-right font-mono text-pink-400 text-xs">${Format.won(bg.girlPay)}</td>
+                <td class="px-4 py-3.5 text-right font-mono text-slate-400 text-xs">${Format.won(bg.expenses)}</td>
+                <td class="px-4 py-3.5 text-right font-bold ${netP >= 0 ? 'text-emerald-400' : 'text-red-300'}">${Format.won(netP)}</td>
+                <td class="px-4 py-3.5 text-right font-mono text-xs ${margin >= 0 ? 'text-emerald-400' : 'text-red-300'}">${margin}%</td>
+                <td class="px-4 py-3.5 text-right font-mono text-blue-400">${Format.won(bg.settlement)}</td>
+                <td class="px-4 py-3.5 text-right">
+                    <div class="flex items-center justify-end gap-2">
+                        <div class="w-14 bg-slate-800 rounded-full h-1.5">
+                            <div class="bg-blue-500 h-1.5 rounded-full" style="width:${share}%"></div>
+                        </div>
+                        <span class="text-[10px] text-slate-400 font-mono">${share}%</span>
+                    </div>
+                </td>
+            </tr>
+            ${staffRows}`;
+        };
 
         container.innerHTML = `
         <div class="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
+            <!-- 페이지 헤더 -->
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-bold text-white">일일 영업 정산</h1>
-                    <p class="text-slate-400 text-sm">${isAdmin ? '전체 직원의 정산을 조회·관리합니다.' : '내 영업 정산을 관리합니다.'}</p>
+                    <p class="text-slate-400 text-sm">${isAdmin ? '지점별 매출을 확인하고 세부 내역을 펼쳐볼 수 있습니다.' : '내 영업 정산을 관리합니다.'}</p>
                 </div>
                 <div class="flex gap-2">
                     <button id="btn-export-settlement" class="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs hover:bg-slate-700 transition-colors text-slate-300">
@@ -91,14 +182,15 @@ const SettlementPage = {
                     </button>
                 </div>
             </div>
+
             ${PeriodFilter.renderUI(this.periodType, this.customFrom, this.customTo, 'st')}
 
-            <!-- 전체 취합 요약 카드 -->
-            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+            <!-- 전체 요약 카드 -->
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
                 <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
                     <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">총 매출</p>
                     <p class="text-lg md:text-xl font-black text-white">${Format.won(sumRevenue)}</p>
-                    <p class="text-[10px] text-slate-500 mt-1">${settlements.length}건 정산</p>
+                    <p class="text-[10px] text-slate-500 mt-1">${settlements.length}건 · ${branchEntries.length}개 지점</p>
                 </div>
                 <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
                     <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">총 차감</p>
@@ -112,10 +204,10 @@ const SettlementPage = {
                 <div class="bg-slate-900 p-4 rounded-xl border ${sumNetProfit >= 0 ? 'border-blue-500/30' : 'border-red-500/30'}">
                     <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">순이익</p>
                     <p class="text-lg md:text-xl font-black ${sumNetProfit >= 0 ? 'text-blue-400' : 'text-red-300'}">${Format.won(sumNetProfit)}</p>
-                    <p class="text-[10px] text-slate-500 mt-1">매출 − 차감 합계</p>
+                    <p class="text-[10px] text-slate-500 mt-1">매출 − 차감</p>
                 </div>
                 <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">최종 정산금 합계</p>
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">최종 정산금</p>
                     <p class="text-lg md:text-xl font-black text-white">${Format.won(sumSettlement)}</p>
                     <p class="text-[10px] text-slate-500 mt-1">이월 포함</p>
                 </div>
@@ -126,102 +218,119 @@ const SettlementPage = {
                 </div>
             </div>
 
-            ${isAdmin && Object.keys(branchStats).length > 0 ? `
-            <!-- 지점별 순이익 분석 -->
+            <!-- 지점별 매출 테이블 (아코디언) -->
             <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-                <div class="p-4 border-b border-slate-800 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-blue-500 text-base">store</span>
-                    <h4 class="font-bold text-sm">지점별 순이익 분석</h4>
+                <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-blue-400 text-base">store</span>
+                        <h3 class="font-bold text-sm text-white">지점별 매출 현황</h3>
+                        <span class="text-[10px] text-slate-500">· 지점명 클릭 시 직원별 세부 내역 펼치기</span>
+                    </div>
+                    <button id="btn-expand-all" class="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">unfold_more</span> 전체 펼치기
+                    </button>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm whitespace-nowrap" style="white-space:nowrap;min-width:700px">
-                        <thead><tr class="bg-slate-800/50 text-[10px] text-slate-500 uppercase tracking-wider">
-                            <th class="px-4 md:px-6 py-3 font-semibold">지점</th>
-                            <th class="px-4 md:px-6 py-3 font-semibold">정산 수</th>
-                            <th class="px-4 md:px-6 py-3 font-semibold">총 매출</th>
-                            <th class="px-4 md:px-6 py-3 font-semibold">와리</th>
-                            <th class="px-4 md:px-6 py-3 font-semibold">아가씨</th>
-                            <th class="px-4 md:px-6 py-3 font-semibold">기타지출</th>
-                            <th class="px-4 md:px-6 py-3 font-semibold">순이익</th>
-                            <th class="px-4 md:px-6 py-3 font-semibold">이익률</th>
-                            <th class="px-4 md:px-6 py-3 font-semibold">비중</th>
-                        </tr></thead>
-                        <tbody class="divide-y divide-slate-800">
-                            ${Object.entries(branchStats).map(([sid, st]) => {
-                                const s = staff.find(x => x.id === sid);
-                                const netP = st.revenue - st.wari - st.girlPay - st.expenses;
-                                const pctMargin = st.revenue > 0 ? Math.round(netP / st.revenue * 100) : 0;
-                                const pctShare = sumNetProfit > 0 ? Math.round(netP / sumNetProfit * 100) : 0;
-                                return `<tr class="hover:bg-slate-800/30">
-                                    <td class="px-4 md:px-6 py-3">
-                                        <div class="flex items-center gap-2">
-                                            <div class="h-7 w-7 rounded-full bg-blue-500/20 text-blue-400 text-[10px] flex items-center justify-center font-bold">${s ? s.name.substring(0, 1) : '?'}</div>
-                                            <div>
-                                                <span class="text-white font-bold text-xs">${s ? (s.branch_name || s.name) : '관리자'}</span>
-                                                ${s && s.branch_name ? `<span class="text-[10px] text-slate-500 block">${s.name}</span>` : ''}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 md:px-6 py-3 font-mono text-slate-400">${st.count}건</td>
-                                    <td class="px-4 md:px-6 py-3 font-mono text-white font-bold">${Format.won(st.revenue)}</td>
-                                    <td class="px-4 md:px-6 py-3 font-mono text-yellow-300 text-xs">${Format.won(st.wari)}</td>
-                                    <td class="px-4 md:px-6 py-3 font-mono text-pink-400 text-xs">${Format.won(st.girlPay)}</td>
-                                    <td class="px-4 md:px-6 py-3 font-mono text-slate-400 text-xs">${Format.won(st.expenses)}</td>
-                                    <td class="px-4 md:px-6 py-3 font-mono font-bold ${netP >= 0 ? 'text-blue-400' : 'text-red-300'}">${Format.won(netP)}</td>
-                                    <td class="px-4 md:px-6 py-3 font-mono ${pctMargin >= 0 ? 'text-emerald-400' : 'text-red-300'}">${pctMargin}%</td>
-                                    <td class="px-4 md:px-6 py-3">
-                                        <div class="flex items-center gap-2">
-                                            <div class="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full bg-blue-500 rounded-full" style="width:${Math.max(0, Math.min(100, pctShare))}%"></div></div>
-                                            <span class="text-[10px] font-mono text-slate-400">${pctShare}%</span>
-                                        </div>
-                                    </td>
-                                </tr>`;
-                            }).join('')}
-                            <tr class="bg-slate-800/40 font-bold">
-                                <td class="px-4 md:px-6 py-3 text-white">전체 합계</td>
-                                <td class="px-4 md:px-6 py-3 font-mono text-white">${settlements.length}건</td>
-                                <td class="px-4 md:px-6 py-3 font-mono text-white">${Format.won(sumRevenue)}</td>
-                                <td class="px-4 md:px-6 py-3 font-mono text-yellow-300 text-xs">${Format.won(sumWari)}</td>
-                                <td class="px-4 md:px-6 py-3 font-mono text-pink-400 text-xs">${Format.won(sumGirlPay)}</td>
-                                <td class="px-4 md:px-6 py-3 font-mono text-slate-400 text-xs">${Format.won(sumExpenses)}</td>
-                                <td class="px-4 md:px-6 py-3 font-mono ${sumNetProfit >= 0 ? 'text-blue-400' : 'text-red-300'}">${Format.won(sumNetProfit)}</td>
-                                <td class="px-4 md:px-6 py-3 font-mono ${sumNetProfit >= 0 ? 'text-emerald-400' : 'text-red-300'}">${sumRevenue > 0 ? Math.round(sumNetProfit / sumRevenue * 100) : 0}%</td>
-                                <td class="px-4 md:px-6 py-3 text-[10px] text-slate-500">100%</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>` : ''}
-
-            ${isAdmin ? `<div class="flex flex-wrap gap-2 items-center">
-                <span class="text-xs text-slate-500 font-bold">직원 필터:</span>
-                <button class="staff-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-500 text-white" data-filter="all">전체</button>
-                ${staff.map(s => `<button class="staff-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 hover:bg-slate-700" data-filter="${s.id}">${s.branch_name ? s.branch_name + '(' + s.name + ')' : s.name}</button>`).join('')}
-            </div>` : ''}
-            <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm whitespace-nowrap" style="white-space:nowrap;min-width:600px">
+                    <table class="w-full text-sm" style="min-width:900px">
                         <thead>
-                            <tr class="bg-slate-800/50 border-b border-slate-700">
-                                <th class="px-4 md:px-6 py-4 font-semibold text-slate-300">날짜 / 상태</th>
-                                ${isAdmin ? '<th class="px-4 md:px-6 py-4 font-semibold text-slate-300">입력 직원</th>' : ''}
-                                <th class="px-4 md:px-6 py-4 font-semibold text-slate-300">총 매출</th>
-                                <th class="px-4 md:px-6 py-4 font-semibold text-slate-300 hidden sm:table-cell">룸수</th>
-                                <th class="px-4 md:px-6 py-4 font-semibold text-slate-300 hidden md:table-cell">카드</th>
-                                <th class="px-4 md:px-6 py-4 font-semibold text-slate-300 hidden md:table-cell">외상</th>
-                                <th class="px-4 md:px-6 py-4 font-semibold text-slate-300">순이익</th>
-                                <th class="px-4 md:px-6 py-4 font-semibold text-slate-300">정산금</th>
-                                <th class="px-4 md:px-6 py-4 font-semibold text-slate-300 text-right">작업</th>
+                            <tr class="bg-slate-800/60 text-[10px] text-slate-500 uppercase tracking-wider">
+                                <th class="px-4 py-3 text-left">지점 / 직원</th>
+                                <th class="px-4 py-3 text-right">총 매출</th>
+                                <th class="px-4 py-3 text-right">와리</th>
+                                <th class="px-4 py-3 text-right">아가씨</th>
+                                <th class="px-4 py-3 text-right">지출</th>
+                                <th class="px-4 py-3 text-right">순이익</th>
+                                <th class="px-4 py-3 text-right">이익률</th>
+                                <th class="px-4 py-3 text-right">정산금</th>
+                                <th class="px-4 py-3 text-right">비중</th>
                             </tr>
                         </thead>
-                        <tbody id="settlement-tbody" class="divide-y divide-slate-800">
-                            ${await this.renderRows(settlements, staff, isAdmin)}
+                        <tbody id="branch-accordion-tbody">
+                            ${isAdmin
+                                ? branchEntries.map(([bn, bg]) => buildBranchRows(bn, bg)).join('')
+                                : `<tr><td colspan="9" class="px-4 py-8 text-center text-slate-500">관리자만 지점별 현황을 볼 수 있습니다.</td></tr>`
+                            }
+                            <!-- 합계 행 -->
+                            <tr class="bg-slate-800/50 border-t-2 border-slate-700 font-bold">
+                                <td class="px-4 py-3 text-white">전체 합계</td>
+                                <td class="px-4 py-3 text-right text-white">${Format.won(sumRevenue)}</td>
+                                <td class="px-4 py-3 text-right text-yellow-300 text-xs">${Format.won(sumWari)}</td>
+                                <td class="px-4 py-3 text-right text-pink-400 text-xs">${Format.won(sumGirlPay)}</td>
+                                <td class="px-4 py-3 text-right text-slate-400 text-xs">${Format.won(sumExpenses)}</td>
+                                <td class="px-4 py-3 text-right ${sumNetProfit >= 0 ? 'text-emerald-400' : 'text-red-300'}">${Format.won(sumNetProfit)}</td>
+                                <td class="px-4 py-3 text-right ${sumNetProfit >= 0 ? 'text-emerald-400' : 'text-red-300'}">${sumRevenue > 0 ? Math.round(sumNetProfit / sumRevenue * 100) : 0}%</td>
+                                <td class="px-4 py-3 text-right text-blue-400">${Format.won(sumSettlement)}</td>
+                                <td class="px-4 py-3 text-right text-slate-500 text-xs">100%</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            <!-- 직원별 정산 상세 내역 (아코디언 클릭 시 표시) -->
+            <div id="staff-sales-detail" class="hidden space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 id="staff-sales-title" class="font-bold text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-blue-400 text-base">person</span>
+                        직원별 정산 내역
+                    </h3>
+                    <button id="btn-close-detail" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">close</span> 닫기
+                    </button>
+                </div>
+                <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm" style="min-width:700px">
+                            <thead>
+                                <tr class="bg-slate-800/60 text-[10px] text-slate-500 uppercase tracking-wider">
+                                    <th class="px-4 py-3 text-left">날짜 / 상태</th>
+                                    <th class="px-4 py-3 text-left">입력자</th>
+                                    <th class="px-4 py-3 text-right">총 매출</th>
+                                    <th class="px-4 py-3 text-right hidden sm:table-cell">룸수</th>
+                                    <th class="px-4 py-3 text-right hidden md:table-cell">카드</th>
+                                    <th class="px-4 py-3 text-right hidden md:table-cell">외상</th>
+                                    <th class="px-4 py-3 text-right">순이익</th>
+                                    <th class="px-4 py-3 text-right">정산금</th>
+                                    <th class="px-4 py-3 text-right">작업</th>
+                                </tr>
+                            </thead>
+                            <tbody id="staff-sales-tbody" class="divide-y divide-slate-800">
+                                <tr><td colspan="9" class="px-4 py-8 text-center text-slate-500">직원을 선택하세요.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 비관리자용: 내 정산 목록 -->
+            ${!isAdmin ? `
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+                <div class="p-4 border-b border-slate-800">
+                    <h3 class="font-bold text-sm">내 정산 내역</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm" style="min-width:600px">
+                        <thead>
+                            <tr class="bg-slate-800/50 text-[10px] text-slate-500 uppercase tracking-wider">
+                                <th class="px-4 py-3 text-left">날짜 / 상태</th>
+                                <th class="px-4 py-3 text-right">총 매출</th>
+                                <th class="px-4 py-3 text-right hidden sm:table-cell">룸수</th>
+                                <th class="px-4 py-3 text-right hidden md:table-cell">카드</th>
+                                <th class="px-4 py-3 text-right hidden md:table-cell">외상</th>
+                                <th class="px-4 py-3 text-right">순이익</th>
+                                <th class="px-4 py-3 text-right">정산금</th>
+                                <th class="px-4 py-3 text-right">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settlement-tbody" class="divide-y divide-slate-800">
+                            ${await this.renderRows(settlements, staff, false)}
+                        </tbody>
+                    </table>
+                </div>
+            </div>` : ''}
         </div>`;
 
+        // ── 이벤트 바인딩 ──
         document.getElementById('btn-new-settlement').addEventListener('click', () => {
             this.mode = 'form'; this.editId = null; this.roomCounter = 0; App.renderPage('settlement');
         });
@@ -232,23 +341,73 @@ const SettlementPage = {
             this.periodType = type; this.customFrom = from; this.customTo = to;
             this.mode = 'list'; App.renderPage('settlement');
         });
-        this.rebindRowEvents(container);
 
-        if (isAdmin) {
-            container.querySelectorAll('.staff-filter-btn').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    container.querySelectorAll('.staff-filter-btn').forEach(b => b.className = 'staff-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 hover:bg-slate-700');
-                    btn.className = 'staff-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-500 text-white';
-                    const filter = btn.dataset.filter;
-                    const range = PeriodFilter.getRange(this.periodType, this.customFrom, this.customTo);
-                    let filtered = (await DB.getAll('daily_sales')).sort((a, b) => b.date.localeCompare(a.date));
-                    filtered = PeriodFilter.filterByDate(filtered, 'date', range.from, range.to);
-                    if (filter !== 'all') filtered = filtered.filter(s => s.entered_by === filter);
-                    document.getElementById('settlement-tbody').innerHTML = await this.renderRows(filtered, staff, true);
-                    this.rebindRowEvents(container);
-                });
+        // 아코디언 토글
+        const expandedBranches = new Set();
+        container.querySelectorAll('[data-branch-toggle]').forEach(row => {
+            row.addEventListener('click', () => {
+                const bid = row.dataset.branchToggle;
+                const detailRows = container.querySelectorAll(`.branch-detail-row[data-branch-group="${bid}"]`);
+                const chevron = container.querySelector(`[data-chevron="${bid}"]`);
+                const isOpen = expandedBranches.has(bid);
+                if (isOpen) {
+                    expandedBranches.delete(bid);
+                    detailRows.forEach(r => r.classList.add('hidden'));
+                    if (chevron) { chevron.style.transform = ''; }
+                } else {
+                    expandedBranches.add(bid);
+                    detailRows.forEach(r => r.classList.remove('hidden'));
+                    if (chevron) { chevron.style.transform = 'rotate(90deg)'; }
+                }
             });
-        }
+        });
+
+        // 전체 펼치기/접기
+        let allExpanded = false;
+        document.getElementById('btn-expand-all')?.addEventListener('click', () => {
+            allExpanded = !allExpanded;
+            container.querySelectorAll('.branch-detail-row').forEach(r => r.classList.toggle('hidden', !allExpanded));
+            container.querySelectorAll('[data-chevron]').forEach(c => { c.style.transform = allExpanded ? 'rotate(90deg)' : ''; });
+            if (allExpanded) branchEntries.forEach(([bn]) => expandedBranches.add('branch_' + bn.replace(/\s/g,'_')));
+            else expandedBranches.clear();
+            const btn = document.getElementById('btn-expand-all');
+            if (btn) btn.innerHTML = allExpanded
+                ? '<span class="material-symbols-outlined text-sm">unfold_less</span> 전체 접기'
+                : '<span class="material-symbols-outlined text-sm">unfold_more</span> 전체 펼치기';
+        });
+
+        // 직원별 내역보기
+        container.querySelectorAll('.btn-view-staff-sales').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const sid = btn.dataset.staffId;
+                const branchName = btn.dataset.branch;
+                const sv = staff.find(x => x.id === sid);
+                const staffSales = settlements.filter(s => s.entered_by === sid).sort((a, b) => b.date.localeCompare(a.date));
+                const todayStr = Format.today();
+
+                const detailEl = document.getElementById('staff-sales-detail');
+                const titleEl = document.getElementById('staff-sales-title');
+                const tbodyEl = document.getElementById('staff-sales-tbody');
+
+                titleEl.innerHTML = `<span class="material-symbols-outlined text-blue-400 text-base">person</span>
+                    <span class="text-blue-400">${branchName}</span>
+                    <span class="text-slate-400 mx-1">·</span>
+                    <span>${sv ? sv.name : '?'}</span>
+                    <span class="text-xs text-slate-500 font-normal ml-2">${staffSales.length}건</span>`;
+
+                const rowsHtml = await this.renderRows(staffSales, staff, true);
+                tbodyEl.innerHTML = rowsHtml;
+                detailEl.classList.remove('hidden');
+                detailEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                this.rebindRowEvents(container);
+            });
+        });
+
+        document.getElementById('btn-close-detail')?.addEventListener('click', () => {
+            document.getElementById('staff-sales-detail')?.classList.add('hidden');
+        });
+
+        this.rebindRowEvents(container);
     },
 
     rebindRowEvents(container) {
@@ -278,7 +437,7 @@ const SettlementPage = {
 
     async renderRows(settlements, staff, isAdmin) {
         if (settlements.length === 0) {
-            return `<tr><td colspan="${isAdmin ? 10 : 9}" class="px-6 py-16 text-center text-slate-500">
+            return `<tr><td colspan="9" class="px-6 py-16 text-center text-slate-500">
                 <span class="material-symbols-outlined text-5xl block mb-3">receipt_long</span>정산 데이터가 없습니다.</td></tr>`;
         }
         const todayStr = Format.today();
@@ -295,21 +454,23 @@ const SettlementPage = {
                     : `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-600/20 text-slate-500"><span class="material-symbols-outlined text-[10px]">schedule</span>미마감</span>`;
             return `
             <tr class="hover:bg-slate-800/30 transition-colors">
-                <td class="px-4 md:px-6 py-4"><div class="flex items-center gap-2"><span class="text-slate-300 font-mono">${s.date}</span>${statusBadge}</div></td>
-                ${isAdmin ? `<td class="px-4 md:px-6 py-4">
+                <td class="px-4 py-3"><div class="flex items-center gap-2"><span class="text-slate-300 font-mono text-xs">${s.date}</span>${statusBadge}</div></td>
+                <td class="px-4 py-3">
                     <div class="flex items-center gap-2">
-                        <div class="h-6 w-6 rounded-full bg-blue-400/20 text-blue-400 text-[10px] flex items-center justify-center font-bold">${enteredBy ? enteredBy.name.substring(0, 1) : '?'}</div>
-                        <div><span class="text-slate-300 text-xs font-bold">${enteredBy ? (enteredBy.branch_name || enteredBy.name) : '관리자'}</span>
-                        ${enteredBy && enteredBy.branch_name ? `<span class="text-[10px] text-slate-500 block">${enteredBy.name}</span>` : ''}</div>
+                        <div class="h-6 w-6 rounded-full bg-blue-400/20 text-blue-400 text-[10px] flex items-center justify-center font-bold shrink-0">${enteredBy ? enteredBy.name.substring(0, 1) : '?'}</div>
+                        <div>
+                            <span class="text-slate-300 text-xs font-bold">${enteredBy ? (enteredBy.branch_name || enteredBy.name) : '관리자'}</span>
+                            ${enteredBy && enteredBy.branch_name ? `<span class="text-[10px] text-slate-500 block">${enteredBy.name}</span>` : ''}
+                        </div>
                     </div>
-                </td>` : ''}
-                <td class="px-4 md:px-6 py-4 font-bold text-white">${Format.won(s.total_revenue)}</td>
-                <td class="px-4 md:px-6 py-4 text-slate-400 hidden sm:table-cell">${roomCount}개</td>
-                <td class="px-4 md:px-6 py-4 text-slate-400 hidden md:table-cell">${Format.won(s.card_amount || 0)}</td>
-                <td class="px-4 md:px-6 py-4 text-red-300 hidden md:table-cell">${Format.won(s.credit_amount || 0)}</td>
-                <td class="px-4 md:px-6 py-4 font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-300'}">${Format.won(netProfit)}</td>
-                <td class="px-4 md:px-6 py-4 font-bold text-blue-500">${Format.won(s.net_settlement)}</td>
-                <td class="px-4 md:px-6 py-4 text-right whitespace-nowrap">
+                </td>
+                <td class="px-4 py-3 font-bold text-white text-right">${Format.won(s.total_revenue)}</td>
+                <td class="px-4 py-3 text-slate-400 text-right hidden sm:table-cell">${roomCount}개</td>
+                <td class="px-4 py-3 text-slate-400 text-right hidden md:table-cell">${Format.won(s.card_amount || 0)}</td>
+                <td class="px-4 py-3 text-red-300 text-right hidden md:table-cell">${Format.won(s.credit_amount || 0)}</td>
+                <td class="px-4 py-3 font-bold text-right ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-300'}">${Format.won(netProfit)}</td>
+                <td class="px-4 py-3 font-bold text-blue-400 text-right">${Format.won(s.net_settlement)}</td>
+                <td class="px-4 py-3 text-right whitespace-nowrap">
                     <button class="text-blue-500 hover:underline text-xs font-bold mr-2" data-view="${s.id}">보기</button>
                     ${!isClosed && !isAdmin ? `<button class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors mr-2" data-close="${s.id}">마감완료</button>` : ''}
                     ${isAdmin ? `<button class="text-slate-400 hover:text-red-300 text-xs" data-delete="${s.id}">삭제</button>` : ''}
