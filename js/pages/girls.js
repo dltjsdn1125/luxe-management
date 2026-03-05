@@ -1,6 +1,8 @@
 // 아가씨 관리 페이지
 const GirlsPage = {
-    filterStaffId: null,
+    filterBranch: null,   // null = 전체, 'string' = 지점명
+    filterStaffId: null,  // 하위 호환 (직원 필터, 현재 미사용)
+    _expandedBranches: new Set(),
     _charts: [],
     _destroyCharts() { this._charts.forEach(c => { try { c.destroy(); } catch(e){} }); this._charts = []; },
 
@@ -22,33 +24,136 @@ const GirlsPage = {
 
     async render(container) {
         this._destroyCharts();
-        let girls = await DB.getAll('girls');
+        const allGirls = await DB.getAll('girls');
         const staff = await DB.getAll('staff');
-        let payments = await DB.getAll('girl_payments');
+        let allPayments = await DB.getAll('girl_payments');
         const isAdmin = Auth.isAdmin();
-        // 지점별 만근기준: 필터 시 해당 지점, 미필터 시 로그인 직원 지점
-        let branchIdForFullAtt = null;
-        if (isAdmin && this.filterStaffId) {
-            const selStaff = staff.find(s => s.id === this.filterStaffId);
-            if (selStaff?.branch_name) {
-                const branches = await DB.getAll('branches');
-                const b = branches.find(x => x.name === selStaff.branch_name);
-                if (b) branchIdForFullAtt = b.id;
-            }
-        }
-        const fullAttDays = await this.getFullAttendanceDays(branchIdForFullAtt);
         const thisMonth = Format.today().substring(0, 7);
 
+        // 비관리자: 본인 담당 아가씨만
+        let girls = allGirls;
+        let payments = allPayments;
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
-            girls = girls.filter(g => g.staff_id === staffId || g.entered_by === staffId);
+            girls = allGirls.filter(g => g.staff_id === staffId || g.entered_by === staffId);
             const girlIds = girls.map(g => g.id);
-            payments = payments.filter(p => girlIds.includes(p.girl_id) || p.entered_by === staffId);
-        } else if (this.filterStaffId) {
-            girls = girls.filter(g => g.staff_id === this.filterStaffId || g.entered_by === this.filterStaffId);
-            const girlIds = girls.map(g => g.id);
-            payments = payments.filter(p => girlIds.includes(p.girl_id) || p.entered_by === this.filterStaffId);
+            payments = allPayments.filter(p => girlIds.includes(p.girl_id) || p.entered_by === staffId);
         }
+
+        // 지점 목록 (staff.branch_name 기준)
+        const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
+
+        // 지점별 만근기준
+        const branches = await DB.getAll('branches');
+        const branchFullAttMap = {};
+        for (const bn of branchNames) {
+            const b = branches.find(x => x.name === bn);
+            const val = await DB.getBranchSetting('full_attendance_days', b ? b.id : null);
+            branchFullAttMap[bn] = val ? Number(val) : 25;
+        }
+        const defaultFullAttDays = await this.getFullAttendanceDays(null);
+
+        // 아가씨 카드 HTML 생성 함수
+        const buildGirlCard = (g, fullAttDays) => {
+            const s = staff.find(st => st.id === g.staff_id);
+            const gPayments = payments.filter(p => p.girl_id === g.id);
+            const totalPaid = gPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+            const monthlyPayments = gPayments.filter(p => p.date && p.date.startsWith(thisMonth));
+            const workDays = monthlyPayments.filter(p => p.type === 'standby').length;
+            const eventCount = monthlyPayments.filter(p => p.type === 'event').length;
+            const monthlyPaid = monthlyPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+            const isFullAtt = workDays >= fullAttDays;
+            const standbyFee = g.standby_fee || 0;
+            const eventFee = g.event_fee || 0;
+            const expectedTotal = workDays * standbyFee + eventCount * eventFee;
+            return `
+            <div class="bg-slate-900 p-4 rounded-xl border ${isFullAtt ? 'border-emerald-500/30 bg-gradient-to-br from-slate-900 to-emerald-950/10' : 'border-slate-800'} ${!g.active ? 'opacity-50' : ''}">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-pink-500/10 border border-pink-500/20 flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-pink-400 text-base">person</span>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white text-sm">${g.name}</h3>
+                            <p class="text-[10px] text-slate-500">담당: ${s ? s.name : '-'} · 와리 ${g.incentive_rate || 0}%</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        ${isFullAtt ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded text-emerald-400 bg-emerald-500/10">만근</span>' : ''}
+                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${g.active ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-500 bg-slate-800'}">${g.active ? '활성' : '비활성'}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center mb-2">
+                    <div class="bg-slate-800/50 rounded-lg p-2">
+                        <p class="text-[10px] text-slate-500">출근일</p>
+                        <p class="font-bold text-xs ${isFullAtt ? 'text-emerald-400' : 'text-white'}">${workDays}/${fullAttDays}</p>
+                    </div>
+                    <div class="bg-slate-800/50 rounded-lg p-2">
+                        <p class="text-[10px] text-slate-500">이번달</p>
+                        <p class="font-bold text-white text-xs">${Format.number(monthlyPaid)}</p>
+                    </div>
+                    <div class="bg-slate-800/50 rounded-lg p-2">
+                        <p class="text-[10px] text-slate-500">총 지급</p>
+                        <p class="font-bold text-white text-xs">${Format.number(totalPaid)}</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500 mb-3 px-1">
+                    <span>대기비: <b class="text-blue-400">${Format.number(standbyFee)}</b> (${workDays}일)</span>
+                    <span>이벤트: <b class="text-purple-400">${Format.number(eventFee)}</b> (${eventCount}건)</span>
+                    ${expectedTotal > 0 ? `<span class="text-emerald-400/80">예상: ${Format.number(expectedTotal)}</span>` : ''}
+                </div>
+                <div class="flex gap-2">
+                    <button class="flex-1 text-xs text-blue-500 font-bold py-1.5 bg-blue-500/10 rounded-lg hover:bg-blue-500/20 transition-colors" data-girl-detail="${g.id}">상세</button>
+                    <button class="text-xs text-slate-400 py-1.5 px-3 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors" data-edit-girl="${g.id}">수정</button>
+                </div>
+            </div>`;
+        };
+
+        // 지점별 아코디언 섹션 생성
+        const buildBranchSection = (bn) => {
+            const fullAttDays = branchFullAttMap[bn] || defaultFullAttDays;
+            const branchStaffIds = staff.filter(s => s.branch_name === bn).map(s => s.id);
+            const branchGirls = girls.filter(g => branchStaffIds.includes(g.staff_id));
+            const isExpanded = this._expandedBranches.has(bn);
+            const totalMonthlyPaid = branchGirls.reduce((sum, g) => {
+                const mp = payments.filter(p => p.girl_id === g.id && p.date && p.date.startsWith(thisMonth));
+                return sum + mp.reduce((s2, p) => s2 + (Number(p.amount) || 0), 0);
+            }, 0);
+            const fullAttCount = branchGirls.filter(g => {
+                const wd = payments.filter(p => p.girl_id === g.id && p.date && p.date.startsWith(thisMonth) && p.type === 'standby').length;
+                return wd >= fullAttDays;
+            }).length;
+            const branchId = 'branch_girls_' + bn.replace(/\s/g, '_');
+            return `
+            <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+                <button class="w-full flex items-center justify-between p-4 hover:bg-slate-800/50 transition-colors branch-girls-toggle" data-branch-id="${branchId}" data-branch-name="${bn}">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-pink-400 text-base branch-girls-chevron transition-transform ${isExpanded ? 'rotate-90' : ''}" data-chevron="${branchId}">chevron_right</span>
+                        <div class="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-pink-400 text-sm">store</span>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-bold text-white text-sm">${bn}</p>
+                            <p class="text-[10px] text-slate-500">아가씨 ${branchGirls.length}명 · 만근 ${fullAttCount}명 · 만근기준 ${fullAttDays}일</p>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <p class="text-[10px] text-slate-500">이번달 지급</p>
+                        <p class="font-bold text-pink-400 text-sm">${Format.won(totalMonthlyPaid)}</p>
+                    </div>
+                </button>
+                <div class="branch-girls-content ${isExpanded ? '' : 'hidden'}" data-content="${branchId}">
+                    ${branchGirls.length > 0
+                        ? `<div class="p-4 pt-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">${branchGirls.map(g => buildGirlCard(g, fullAttDays)).join('')}</div>`
+                        : `<p class="text-slate-500 text-center py-8 text-sm">이 지점에 등록된 아가씨가 없습니다.</p>`
+                    }
+                </div>
+            </div>`;
+        };
+
+        // 지점 미분류 아가씨 (staff_id 없거나 지점 없는 직원 담당)
+        const allBranchStaffIds = staff.filter(s => s.branch_name).map(s => s.id);
+        const unassignedGirls = girls.filter(g => !allBranchStaffIds.includes(g.staff_id));
 
         container.innerHTML = `
         <div class="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
@@ -62,7 +167,7 @@ const GirlsPage = {
                         <span class="material-symbols-outlined text-sm">download</span> 엑셀
                     </button>
                     ${isAdmin ? `<button id="btn-set-full-att" class="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs hover:bg-slate-700 transition-colors text-slate-300">
-                        <span class="material-symbols-outlined text-sm">settings</span> 만근 기준: ${fullAttDays}일
+                        <span class="material-symbols-outlined text-sm">settings</span> 만근 기준: ${defaultFullAttDays}일
                     </button>` : ''}
                     <button id="btn-add-girl" class="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm hover:bg-slate-700 transition-colors">
                         <span class="material-symbols-outlined text-sm">person_add</span> 등록
@@ -73,70 +178,43 @@ const GirlsPage = {
                 </div>
             </div>
 
-            ${isAdmin ? `<div class="flex flex-wrap gap-2">
-                <button class="girl-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!this.filterStaffId ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-filter-staff="">전체</button>
-                ${staff.map(s => `<button class="girl-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${this.filterStaffId === s.id ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-filter-staff="${s.id}">${s.branch_name ? s.branch_name + '(' + s.name + ')' : s.name}</button>`).join('')}
+            ${isAdmin ? `
+            <!-- 지점 필터 탭 -->
+            <div class="flex flex-wrap gap-2 items-center">
+                <button class="girl-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!this.filterBranch ? 'bg-pink-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="">
+                    전체 (${branchNames.length}개 지점)
+                </button>
+                ${branchNames.map(bn => {
+                    const branchStaffIds = staff.filter(s => s.branch_name === bn).map(s => s.id);
+                    const cnt = girls.filter(g => branchStaffIds.includes(g.staff_id)).length;
+                    return `<button class="girl-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${this.filterBranch === bn ? 'bg-pink-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="${bn}">
+                        ${bn} <span class="opacity-70">(${cnt})</span>
+                    </button>`;
+                }).join('')}
+                <button id="btn-expand-all-branches" class="ml-auto text-xs text-pink-400 hover:text-pink-300 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm">unfold_more</span> 전체 펼치기
+                </button>
             </div>` : ''}
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                ${girls.map(g => {
-                    const s = staff.find(st => st.id === g.staff_id);
-                    const gPayments = payments.filter(p => p.girl_id === g.id);
-                    const totalPaid = gPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-                    const monthlyPayments = gPayments.filter(p => p.date && p.date.startsWith(thisMonth));
-                    const workDays = monthlyPayments.filter(p => p.type === 'standby').length;
-                    const eventCount = monthlyPayments.filter(p => p.type === 'event').length;
-                    const monthlyPaid = monthlyPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-                    const isFullAtt = workDays >= fullAttDays;
-                    const standbyFee = g.standby_fee || 0;
-                    const eventFee = g.event_fee || 0;
-                    const expectedStandby = workDays * standbyFee;
-                    const expectedEvent = eventCount * eventFee;
-                    const expectedTotal = expectedStandby + expectedEvent;
-
-                    return `
-                    <div class="bg-slate-900 p-4 md:p-5 rounded-xl border ${isFullAtt ? 'border-emerald-500/30 bg-gradient-to-br from-slate-900 to-emerald-950/10' : 'border-slate-800'} ${!g.active ? 'opacity-50' : ''}">
-                        <div class="flex justify-between items-start mb-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-pink-500/10 border border-pink-500/20 flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-pink-400">person</span>
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-white">${g.name}</h3>
-                                    <p class="text-[10px] text-slate-500">담당: ${s ? (s.branch_name ? s.branch_name + ' ' + s.name : s.name) : '-'} · 와리 ${g.incentive_rate || 0}%</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                ${isFullAtt ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded text-emerald-400 bg-emerald-500/10">만근</span>' : ''}
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded ${g.active ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-500 bg-slate-800'}">${g.active ? '활성' : '비활성'}</span>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2 text-center mb-2">
-                            <div class="bg-slate-800/50 rounded-lg p-2">
-                                <p class="text-[10px] text-slate-500">출근일</p>
-                                <p class="font-bold ${isFullAtt ? 'text-emerald-400' : 'text-white'}">${workDays}/${fullAttDays}</p>
-                            </div>
-                            <div class="bg-slate-800/50 rounded-lg p-2">
-                                <p class="text-[10px] text-slate-500">이번달</p>
-                                <p class="font-bold text-white text-xs">${Format.number(monthlyPaid)}</p>
-                            </div>
-                            <div class="bg-slate-800/50 rounded-lg p-2">
-                                <p class="text-[10px] text-slate-500">총 지급</p>
-                                <p class="font-bold text-white text-xs">${Format.number(totalPaid)}</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 mb-3 px-1">
-                            <span>대기비: <b class="text-blue-400">${Format.number(standbyFee)}</b> (${workDays}일)</span>
-                            <span>이벤트: <b class="text-purple-400">${Format.number(eventFee)}</b> (${eventCount}건)</span>
-                            ${expectedTotal > 0 ? `<span class="text-emerald-400/80">예상: ${Format.number(expectedTotal)}</span>` : ''}
-                        </div>
-                        <div class="flex gap-2">
-                            <button class="flex-1 text-xs text-blue-500 font-bold py-1.5 bg-blue-500/10 rounded-lg hover:bg-blue-500/20 transition-colors" data-girl-detail="${g.id}">상세</button>
-                            <button class="text-xs text-slate-400 py-1.5 px-3 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors" data-edit-girl="${g.id}">수정</button>
-                        </div>
-                    </div>`;
-                }).join('')}
-                ${girls.length === 0 ? `<p class="text-slate-500 col-span-3 text-center py-16">등록된 아가씨가 없습니다.</p>` : ''}
+            <!-- 지점별 아코디언 -->
+            <div class="space-y-3" id="girls-branch-list">
+                ${isAdmin
+                    ? (this.filterBranch
+                        ? buildBranchSection(this.filterBranch)
+                        : branchNames.map(bn => buildBranchSection(bn)).join('')
+                      )
+                    : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">${girls.map(g => buildGirlCard(g, defaultFullAttDays)).join('')}${girls.length === 0 ? '<p class="text-slate-500 col-span-3 text-center py-16">등록된 아가씨가 없습니다.</p>' : ''}</div>`
+                }
+                ${isAdmin && unassignedGirls.length > 0 ? `
+                <div class="bg-slate-900 rounded-xl border border-slate-700/50 overflow-hidden">
+                    <div class="p-4 flex items-center gap-2 text-slate-500">
+                        <span class="material-symbols-outlined text-sm">help_outline</span>
+                        <span class="text-xs font-bold">미분류 (${unassignedGirls.length}명)</span>
+                    </div>
+                    <div class="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        ${unassignedGirls.map(g => buildGirlCard(g, defaultFullAttDays)).join('')}
+                    </div>
+                </div>` : ''}
             </div>
 
             <!-- 통계 차트 -->
@@ -266,11 +344,47 @@ const GirlsPage = {
             ExcelExport.exportGirls(girls, payments, staff);
         });
 
-        container.querySelectorAll('.girl-filter').forEach(btn => {
+        // 지점 필터 탭
+        container.querySelectorAll('.girl-branch-filter').forEach(btn => {
             btn.addEventListener('click', () => {
-                this.filterStaffId = btn.dataset.filterStaff || null;
+                this.filterBranch = btn.dataset.branch || null;
+                this._expandedBranches.clear();
                 App.renderPage('girls');
             });
+        });
+
+        // 지점 아코디언 토글
+        container.querySelectorAll('.branch-girls-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const bid = btn.dataset.branchId;
+                const bn = btn.dataset.branchName;
+                const content = container.querySelector(`[data-content="${bid}"]`);
+                const chevron = container.querySelector(`[data-chevron="${bid}"]`);
+                if (this._expandedBranches.has(bn)) {
+                    this._expandedBranches.delete(bn);
+                    content?.classList.add('hidden');
+                    chevron?.classList.remove('rotate-90');
+                } else {
+                    this._expandedBranches.add(bn);
+                    content?.classList.remove('hidden');
+                    chevron?.classList.add('rotate-90');
+                }
+            });
+        });
+
+        // 전체 펼치기/접기
+        let allExpanded = false;
+        document.getElementById('btn-expand-all-branches')?.addEventListener('click', (e) => {
+            allExpanded = !allExpanded;
+            container.querySelectorAll('.branch-girls-content').forEach(el => el.classList.toggle('hidden', !allExpanded));
+            container.querySelectorAll('.branch-girls-chevron').forEach(el => el.classList.toggle('rotate-90', allExpanded));
+            const branchNames = [...container.querySelectorAll('.branch-girls-toggle')].map(b => b.dataset.branchName);
+            if (allExpanded) branchNames.forEach(bn => this._expandedBranches.add(bn));
+            else this._expandedBranches.clear();
+            const btn = e.currentTarget;
+            btn.innerHTML = allExpanded
+                ? '<span class="material-symbols-outlined text-sm">unfold_less</span> 전체 접기'
+                : '<span class="material-symbols-outlined text-sm">unfold_more</span> 전체 펼치기';
         });
 
         // 만근 기준 설정 (관리자)
