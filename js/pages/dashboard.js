@@ -763,13 +763,17 @@ const DashboardPage = {
 
     async renderStaff(container) {
         const session = Auth.getSession();
+        if (!session) {
+            container.innerHTML = `<div class="p-8 text-center text-slate-400">로그인이 필요합니다.</div>`;
+            return;
+        }
         const staffId = await Auth.getStaffId(); // getStaffId()는 null이면 자동 복구 시도
         const myStaff = staffId ? await DB.getById('staff', staffId) : null;
         const range = PeriodFilter.getRange(this.periodType, this.customFrom, this.customTo);
 
         if (!staffId) {
             const newStaff = await DB.insert('staff', {
-                name: session.name,
+                name: session.name || session.username || '미지정',
                 branch_name: '',
                 role: 'manager',
                 hire_date: new Date().toISOString().slice(0, 10),
@@ -813,7 +817,7 @@ const DashboardPage = {
         <div class="max-w-[1600px] mx-auto p-4 md:p-6 lg:p-10">
             <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                 <div>
-                    <h2 class="text-2xl md:text-3xl font-bold text-white">${isBranch ? myStaff.branch_name + ' 지점 대시보드' : session.name + '님의 대시보드'}</h2>
+                    <h2 class="text-2xl md:text-3xl font-bold text-white">${isBranch ? (myStaff?.branch_name || '지점') + ' 지점 대시보드' : (session.name || session.username || '직원') + '님의 대시보드'}</h2>
                     <p class="text-slate-500 text-sm mt-1">${Format.dateKR(new Date())} · ${myStaff ? (myStaff.role === 'president' ? '영업사장' : myStaff.role === 'manager' ? '실장' : '스탭') : '직원'}</p>
                 </div>
                 <button onclick="App.navigate('settlement')" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">+ 새 정산 입력</button>
