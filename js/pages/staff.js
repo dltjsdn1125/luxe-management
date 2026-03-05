@@ -112,7 +112,7 @@ const StaffPage = {
 
         const roleOrder = { president: 0, manager: 1, staff: 2, other: 3 };
         const roleLabel = r => r === 'president' ? '영업사장' : r === 'manager' ? '영업실장' : r === 'staff' ? '스탭' : '기타';
-        const roleColor = r => r === 'president' ? 'border-yellow-400 bg-yellow-400/10 text-yellow-300' : r === 'manager' ? 'border-blue-400 bg-blue-400/10 text-blue-300' : r === 'staff' ? 'border-slate-500 bg-slate-800 text-slate-300' : 'border-purple-400 bg-purple-400/10 text-purple-300';
+        const roleColor = r => r === 'president' ? 'border-blue-500 bg-blue-500/10 text-blue-300' : r === 'manager' ? 'border-blue-400 bg-blue-400/10 text-blue-300' : r === 'staff' ? 'border-slate-500 bg-slate-800 text-slate-300' : 'border-purple-400 bg-purple-400/10 text-purple-300';
         const roleIcon = r => r === 'president' ? 'star' : r === 'manager' ? 'badge' : r === 'staff' ? 'person' : 'person_pin';
 
         container.innerHTML = `
@@ -123,7 +123,7 @@ const StaffPage = {
                     <p class="text-xs text-slate-400">직원 카드를 드래그하여 지점 간 이동이 가능합니다. 우클릭으로 빠른 메뉴를 사용하세요.</p>
                 </div>
                 <div class="flex flex-wrap gap-3 mt-2">
-                    <span class="flex items-center gap-1.5 text-xs text-yellow-300"><span class="w-3 h-3 rounded-full bg-yellow-400/30 border border-yellow-400 inline-block"></span>영업사장</span>
+                    <span class="flex items-center gap-1.5 text-xs text-blue-300"><span class="w-3 h-3 rounded-full bg-blue-500/30 border border-blue-500 inline-block"></span>영업사장</span>
                     <span class="flex items-center gap-1.5 text-xs text-blue-300"><span class="w-3 h-3 rounded-full bg-blue-400/30 border border-blue-400 inline-block"></span>영업실장</span>
                     <span class="flex items-center gap-1.5 text-xs text-slate-300"><span class="w-3 h-3 rounded-full bg-slate-700 border border-slate-500 inline-block"></span>스탭</span>
                     <span class="flex items-center gap-1.5 text-xs text-purple-300"><span class="w-3 h-3 rounded-full bg-purple-400/30 border border-purple-400 inline-block"></span>기타</span>
@@ -156,12 +156,12 @@ const StaffPage = {
                                      draggable="${isAdmin ? 'true' : 'false'}"
                                      data-staff-id="${president.id}" data-branch="${branchName}">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-full bg-yellow-400/20 border border-yellow-400/40 flex items-center justify-center shrink-0">
-                                            <span class="material-symbols-outlined text-yellow-300 text-lg">star</span>
+                                        <div class="w-10 h-10 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center shrink-0">
+                                            <span class="material-symbols-outlined text-blue-300 text-lg">star</span>
                                         </div>
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-center gap-1.5 mb-0.5">
-                                                <span class="text-[10px] font-black text-yellow-300 uppercase tracking-tight">영업사장</span>
+                                                <span class="text-[10px] font-black text-blue-300 uppercase tracking-tight">영업사장</span>
                                             </div>
                                             <div class="font-bold text-white truncate">${president.name}</div>
                                             <div class="text-[10px] text-slate-500">인센티브 ${president.incentive_rate}%</div>
@@ -269,7 +269,7 @@ const StaffPage = {
         const branchStaff = staff.filter(s => s.branch_name === this.selectedBranchName);
         const roleOrder = { president: 0, manager: 1, staff: 2, other: 3 };
         const roleLabel = r => r === 'president' ? '영업사장' : r === 'manager' ? '영업실장' : r === 'staff' ? '스탭' : '기타';
-        const roleColorClass = r => r === 'president' ? 'text-yellow-300 bg-yellow-400/10' : r === 'manager' ? 'text-blue-300 bg-blue-400/10' : r === 'staff' ? 'text-slate-300 bg-slate-700' : 'text-purple-300 bg-purple-400/10';
+        const roleColorClass = r => r === 'president' ? 'text-blue-300 bg-blue-500/10' : r === 'manager' ? 'text-blue-300 bg-blue-400/10' : r === 'staff' ? 'text-slate-300 bg-slate-700' : 'text-purple-300 bg-purple-400/10';
 
         const sorted = [...branchStaff].sort((a, b) => (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3));
 
@@ -317,7 +317,7 @@ const StaffPage = {
                                 <td class="px-4 py-3 text-slate-400 font-mono text-xs">${s.hire_date || '-'}</td>
                                 <td class="px-4 py-3 text-right font-mono text-white">${Format.won(s.salary)}</td>
                                 <td class="px-4 py-3 text-right">
-                                    <span class="text-yellow-300 font-bold">${s.incentive_rate}%</span>
+                                    <span class="text-blue-300 font-bold">${s.incentive_rate}%</span>
                                 </td>
                                 <td class="px-4 py-3 text-center text-slate-400 text-xs">매월 ${s.pay_date || 25}일</td>
                                 ${isAdmin ? `<td class="px-4 py-3 text-center">
@@ -340,7 +340,7 @@ const StaffPage = {
             <!-- 직책별 요약 카드 -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 ${[
-                    { role: 'president', label: '영업사장', color: 'yellow', icon: 'star' },
+                    { role: 'president', label: '영업사장', color: 'blue', icon: 'star' },
                     { role: 'manager', label: '영업실장', color: 'blue', icon: 'badge' },
                     { role: 'staff', label: '스탭', color: 'slate', icon: 'person' },
                     { role: 'other', label: '기타', color: 'purple', icon: 'person_pin' },
