@@ -1090,12 +1090,21 @@ const SettlementPage = {
         }
 
         const inventory = await DB.getAll('liquor_inventory');
+        const staff = await DB.getAll('staff');
+        const branches = await DB.getAll('branches');
+        const enteredStaff = staff.find(s => s.id === enteredBy);
+        const saleBranchId = enteredStaff?.branch_name ? (branches.find(b => b.name === enteredStaff.branch_name)?.id) : null;
+        const hasBranchColumn = inventory.some(i => 'branch_id' in i);
         for (const item of data.allLiquorItems) {
-            const inv = inventory.find(i => i.liquor_id === item.liquor_id);
-            if (inv) {
+            const inv = (hasBranchColumn && saleBranchId)
+                ? inventory.find(i => i.liquor_id === item.liquor_id && i.branch_id === saleBranchId)
+                : inventory.find(i => i.liquor_id === item.liquor_id && !i.branch_id);
+            const invFallback = !inv && hasBranchColumn ? inventory.find(i => i.liquor_id === item.liquor_id && !i.branch_id) : inv;
+            const targetInv = inv || invFallback;
+            if (targetInv) {
                 const used = item.qty + (item.service || 0);
-                const newQty = Math.max(0, inv.quantity - used);
-                await DB.update('liquor_inventory', inv.id, { quantity: newQty });
+                const newQty = Math.max(0, targetInv.quantity - used);
+                await DB.update('liquor_inventory', targetInv.id, { quantity: newQty });
             }
         }
 
@@ -1118,20 +1127,25 @@ const SettlementPage = {
         const girls = await DB.getAll('girls');
         const girlExpenseTotal = girlPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
+        // 총 T/C 아가씨별 상세 (전체 룸 아가씨 취합)
+        const allTcGirls = hasRoomData ? saleRooms.flatMap(r => (r.girls || []).map(g => ({
+            ...g, roomNumber: r.room_number || '?', roomVip: r.vip_name
+        }))) : [];
+
         const roomsViewHTML = hasRoomData ? saleRooms.map(r => `
             <div class="p-4 bg-slate-800/30 rounded-xl border border-slate-700/50 mb-3">
                 <div class="flex justify-between items-center mb-2">
                     <div class="flex items-center gap-2">
-                        <span class="bg-blue-500/20 text-blue-400 font-bold text-xs px-2 py-1 rounded">Room ${r.room_number || '?'}</span>
+                        <span class="bg-blue-500/20 text-blue-400 font-bold text-sm px-2 py-1 rounded">Room ${r.room_number || '?'}</span>
                         ${r.vip_name ? `<span class="text-sm font-bold text-white">${r.vip_name}</span>` : ''}
                     </div>
-                    <span class="text-xs text-slate-500">${r.staff_name || ''}</span>
+                    <span class="text-sm text-slate-500">${r.staff_name || ''}</span>
                 </div>
                 ${r.girls && r.girls.length > 0 ? `
                 <div class="mb-2">
-                    <span class="text-[10px] text-pink-400 font-bold uppercase">아가씨</span>
+                    <span class="text-xs text-pink-400 font-bold uppercase">아가씨 (T/C 상세)</span>
                     <div class="mt-1 space-y-1">${r.girls.map(g => `
-                        <div class="flex items-center justify-between text-xs bg-slate-800/50 px-2 py-1 rounded">
+                        <div class="flex items-center justify-between text-sm bg-slate-800/50 px-3 py-2 rounded-lg">
                             <span class="text-white font-medium">${g.name || '?'}</span>
                             <span class="text-slate-400 font-mono">${g.entry_time || '?'} ~ ${g.exit_time || '?'} = <span class="text-blue-400 font-bold">${g.times}T</span></span>
                         </div>`).join('')}
@@ -1144,17 +1158,39 @@ const SettlementPage = {
                         <div class="flex justify-between text-xs"><span class="text-slate-300">${l.name} ×${l.qty}${l.service > 0 ? ` (서비스 ${l.service})` : ''}</span><span class="font-mono text-white">${Format.number(l.subtotal)}</span></div>`).join('')}
                     </div>
                 </div>` : ''}
-                <div class="grid grid-cols-3 gap-2 text-center bg-slate-800/50 rounded-lg p-2 mt-2">
-                    <div><span class="text-[10px] text-slate-500">주대</span><p class="text-xs font-bold text-white">${Format.number(r.joodae)}</p></div>
-                    <div><span class="text-[10px] text-slate-500">T/C (${r.tc_times || 0}T)</span><p class="text-xs font-bold text-white">${Format.number(r.tc_amount)}</p></div>
-                    <div><span class="text-[10px] text-slate-500">매출</span><p class="text-xs font-bold text-blue-400">${Format.number(r.room_revenue)}</p></div>
-                </div>
-                <div class="grid grid-cols-5 gap-1 text-center mt-2 text-[10px]">
-                    ${r.pay_cash ? `<div class="bg-slate-800/30 rounded p-1"><span class="text-slate-500">현금</span><p class="text-white font-mono">${Format.number(r.pay_cash)}</p></div>` : ''}
-                    ${r.pay_card ? `<div class="bg-slate-800/30 rounded p-1"><span class="text-slate-500">카드</span><p class="text-white font-mono">${Format.number(r.pay_card)}</p></div>` : ''}
-                    ${r.pay_borrowing ? `<div class="bg-slate-800/30 rounded p-1"><span class="text-slate-500">차용</span><p class="text-white font-mono">${Format.number(r.pay_borrowing)}</p></div>` : ''}
-                    ${r.pay_other ? `<div class="bg-slate-800/30 rounded p-1"><span class="text-slate-500">기타</span><p class="text-white font-mono">${Format.number(r.pay_other)}</p></div>` : ''}
-                    ${r.pay_credit ? `<div class="bg-slate-800/30 rounded p-1"><span class="text-red-300">외상</span><p class="text-red-300 font-mono">${Format.number(r.pay_credit)}</p><p class="text-slate-500">${r.credit_customer || ''}</p></div>` : ''}
+                <div class="bg-slate-800/50 rounded-lg mt-2 divide-y divide-slate-700/40 overflow-hidden">
+                    <div class="flex items-center justify-between px-4 py-2">
+                        <span class="text-xs text-slate-400 w-20">주대</span>
+                        <span class="text-sm font-bold text-white font-mono text-right">${Format.number(r.joodae)}</span>
+                    </div>
+                    <div class="flex items-center justify-between px-4 py-2">
+                        <span class="text-xs text-slate-400 w-20">T/C (${r.tc_times || 0}T)</span>
+                        <span class="text-sm font-bold text-white font-mono text-right">${Format.number(r.tc_amount)}</span>
+                    </div>
+                    <div class="flex items-center justify-between px-4 py-2 bg-blue-500/5">
+                        <span class="text-xs text-blue-400 w-20 font-semibold">룸 매출</span>
+                        <span class="text-sm font-bold text-blue-400 font-mono text-right">${Format.number(r.room_revenue)}</span>
+                    </div>
+                    ${r.pay_cash ? `<div class="flex items-center justify-between px-4 py-2">
+                        <span class="text-xs text-slate-400 w-20">현금</span>
+                        <span class="text-sm font-bold text-white font-mono text-right">${Format.number(r.pay_cash)}</span>
+                    </div>` : ''}
+                    ${r.pay_card ? `<div class="flex items-center justify-between px-4 py-2">
+                        <span class="text-xs text-slate-400 w-20">카드</span>
+                        <span class="text-sm font-bold text-white font-mono text-right">${Format.number(r.pay_card)}</span>
+                    </div>` : ''}
+                    ${r.pay_borrowing ? `<div class="flex items-center justify-between px-4 py-2">
+                        <span class="text-xs text-slate-400 w-20">차용</span>
+                        <span class="text-sm font-bold text-white font-mono text-right">${Format.number(r.pay_borrowing)}</span>
+                    </div>` : ''}
+                    ${r.pay_other ? `<div class="flex items-center justify-between px-4 py-2">
+                        <span class="text-xs text-slate-400 w-20">기타</span>
+                        <span class="text-sm font-bold text-white font-mono text-right">${Format.number(r.pay_other)}</span>
+                    </div>` : ''}
+                    ${r.pay_credit ? `<div class="flex items-center justify-between px-4 py-2 bg-red-500/5">
+                        <span class="text-xs text-red-300 w-20 font-semibold">외상</span>
+                        <span class="text-sm font-bold text-red-300 font-mono text-right">${Format.number(r.pay_credit)}${r.credit_customer ? ` <span class="text-xs text-slate-500 font-normal ml-1">(${r.credit_customer})</span>` : ''}</span>
+                    </div>` : ''}
                 </div>
             </div>`).join('') : '';
 
@@ -1203,7 +1239,17 @@ const SettlementPage = {
                             <tbody class="divide-y divide-slate-800">
                                 ${hasRoomData ? `
                                 <tr><td class="px-4 py-3 text-slate-300">총 주대</td><td class="px-4 py-3 text-right font-mono text-white">${Format.number(sale.total_joodae || 0)}</td></tr>
-                                <tr><td class="px-4 py-3 text-slate-300">총 T/C</td><td class="px-4 py-3 text-right font-mono text-white">${Format.number(sale.total_tc || 0)}</td></tr>` : ''}
+                                <tr><td class="px-4 py-3 text-slate-300">총 T/C</td><td class="px-4 py-3 text-right font-mono text-white">${Format.number(sale.total_tc || 0)}</td></tr>
+                                ${allTcGirls.length > 0 ? `
+                                <tr><td colspan="2" class="px-4 py-2 bg-slate-800/30">
+                                    <div class="text-xs font-bold text-pink-400 mb-1">T/C 아가씨별 상세 (입실~퇴실)</div>
+                                    <div class="space-y-1">${allTcGirls.map(g => `
+                                        <div class="flex justify-between items-center text-xs py-1">
+                                            <span class="text-white">${g.name || '?'} <span class="text-slate-500">(R${g.roomNumber})</span></span>
+                                            <span class="text-slate-400 font-mono">${g.entry_time || '?'} ~ ${g.exit_time || '?'} = <span class="text-blue-400 font-bold">${g.times}T</span></span>
+                                        </div>`).join('')}
+                                    </div>
+                                </td></tr>` : ''}` : ''}
                                 <tr><td class="px-4 py-3 text-slate-300">현금 합계</td><td class="px-4 py-3 text-right font-mono text-white">${Format.number(sale.cash_amount)}</td></tr>
                                 <tr><td class="px-4 py-3 text-slate-300">카드 합계</td><td class="px-4 py-3 text-right font-mono text-white">${Format.number(sale.card_amount)}</td></tr>
                                 ${sale.borrowing_amount ? `<tr><td class="px-4 py-3 text-slate-300">차용 합계</td><td class="px-4 py-3 text-right font-mono">${Format.number(sale.borrowing_amount)}</td></tr>` : ''}

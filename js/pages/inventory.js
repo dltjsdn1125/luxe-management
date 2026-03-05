@@ -11,10 +11,31 @@ const InventoryPage = {
         this._charts = [];
     },
 
+    async _getEffectiveBranchId() {
+        const staff = await DB.getAll('staff');
+        const branches = await DB.getAll('branches');
+        let staffId = await Auth.getStaffId();
+        if (Auth.isAdmin() && this.filterStaffId) staffId = this.filterStaffId;
+        if (!staffId) return null;
+        const s = staff.find(x => x.id === staffId);
+        if (!s?.branch_name) return null;
+        const b = branches.find(x => x.name === s.branch_name);
+        return b ? b.id : null;
+    },
+
+    _getInvForLiquor(inventory, liquorId, branchId) {
+        if (!inventory.length) return null;
+        const hasBranch = inventory.some(i => 'branch_id' in i);
+        if (!hasBranch || !branchId) return inventory.find(i => i.liquor_id === liquorId);
+        return inventory.find(i => i.liquor_id === liquorId && i.branch_id === branchId)
+            || inventory.find(i => i.liquor_id === liquorId && !i.branch_id);
+    },
+
     async render(container) {
         this._destroyCharts();
         const liquors = await DB.getAll('liquor');
-        const inventory = await DB.getAll('liquor_inventory');
+        const allInventory = await DB.getAll('liquor_inventory');
+        const effectiveBranchId = await this._getEffectiveBranchId();
         let orders = (await DB.getAll('liquor_orders')).sort((a, b) => b.date.localeCompare(a.date));
         const isAdmin = Auth.isAdmin();
         const range = PeriodFilter.getRange(this.periodType, this.customFrom, this.customTo);
@@ -60,10 +81,10 @@ const InventoryPage = {
                 ${staff.map(s => `<button class="inv-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${this.filterStaffId === s.id ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-filter-staff="${s.id}">${s.branch_name ? s.branch_name + '(' + s.name + ')' : s.name}</button>`).join('')}
             </div>` : ''}
 
-            <!-- 재고 현황 카드 -->
+            <!-- 재고 현황 카드 (지점별 필터) -->
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 ${liquors.map(l => {
-                    const inv = inventory.find(i => i.liquor_id === l.id);
+                    const inv = InventoryPage._getInvForLiquor(allInventory, l.id, effectiveBranchId);
                     const qty = inv ? inv.quantity : 0;
                     const threshold = inv ? inv.alert_threshold : 10;
                     const pct = Math.min(100, (qty / Math.max(threshold * 5, 1)) * 100);
@@ -164,7 +185,7 @@ const InventoryPage = {
             </div>
         </div>`;
 
-        this.bindEvents(container, liquors, inventory, orders);
+        this.bindEvents(container, liquors, allInventory, orders, effectiveBranchId);
         await this.renderCharts(liquors, orders, salesInRange);
     },
 
@@ -288,7 +309,7 @@ const InventoryPage = {
         }
     },
 
-    bindEvents(container, liquors, inventory, orders) {
+    bindEvents(container, liquors, allInventory, orders, effectiveBranchId) {
         document.getElementById('btn-export-inventory').addEventListener('click', () => {
             ExcelExport.exportOrders(orders, liquors);
         });
@@ -367,19 +388,32 @@ const InventoryPage = {
                 const price = Format.parseNumber(document.getElementById('ord-price').value);
                 if (qty <= 0) { App.toast('수량을 입력해주세요.', 'error'); return; }
 
+                const orderStaffId = await Auth.getStaffId();
                 await DB.insert('liquor_orders', {
                     date: document.getElementById('ord-date').value,
                     liquor_id: liquorId,
                     quantity: qty, unit_price: price, total_cost: qty * price,
                     supplier: document.getElementById('ord-supplier').value.trim(),
-                    entered_by: await Auth.getStaffId()
+                    entered_by: orderStaffId
                 });
 
-                const inv = (await DB.getAll('liquor_inventory')).find(i => i.liquor_id === liquorId);
-                if (inv) {
-                    await DB.update('liquor_inventory', inv.id, { quantity: inv.quantity + qty });
+                const orderStaff = (await DB.getAll('staff')).find(s => s.id === orderStaffId);
+                const branches = await DB.getAll('branches');
+                const orderBranchId = orderStaff?.branch_name ? (branches.find(b => b.name === orderStaff.branch_name)?.id) : null;
+                const allInv = await DB.getAll('liquor_inventory');
+                const hasBranch = allInv.some(i => 'branch_id' in i);
+                const inv = hasBranch && orderBranchId
+                    ? allInv.find(i => i.liquor_id === liquorId && i.branch_id === orderBranchId)
+                    : allInv.find(i => i.liquor_id === liquorId && !i.branch_id);
+                const invLegacy = !inv && hasBranch ? allInv.find(i => i.liquor_id === liquorId && !i.branch_id) : null;
+                const targetInv = inv || invLegacy;
+                if (targetInv) {
+                    await DB.update('liquor_inventory', targetInv.id, { quantity: targetInv.quantity + qty });
                 } else {
-                    await DB.insert('liquor_inventory', { liquor_id: liquorId, quantity: qty, alert_threshold: 10 });
+                    await DB.insert('liquor_inventory', {
+                        liquor_id: liquorId, quantity: qty, alert_threshold: 10,
+                        ...(orderBranchId && hasBranch && { branch_id: orderBranchId })
+                    });
                 }
 
                 App.toast('발주가 등록되고 재고에 반영되었습니다.', 'success');
@@ -395,7 +429,7 @@ const InventoryPage = {
         container.querySelectorAll('[data-edit-liquor]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const l = await DB.getById('liquor', btn.dataset.editLiquor);
-                const inv = (await DB.getAll('liquor_inventory')).find(i => i.liquor_id === l.id);
+                const inv = InventoryPage._getInvForLiquor(allInventory, l.id, effectiveBranchId) || (await DB.getAll('liquor_inventory')).find(i => i.liquor_id === l.id);
                 if (!l) return;
                 App.showModal('주종 수정', `
                     <div class="space-y-4">

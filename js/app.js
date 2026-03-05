@@ -15,35 +15,51 @@ const App = {
 
     // 라우터 초기화 (async)
     async init() {
-        await Auth.initDemoAccounts();
-        // settings 테이블의 seed_disabled 플래그 확인 (모든 브라우저 공유)
-        const { data: seedFlag } = await window._supabase
-            .from('settings').select('value').eq('key', 'seed_disabled').maybeSingle();
-        if (!seedFlag || seedFlag.value !== 'true') {
-            await this.seedDemoData();
-        }
-
+        // 1. 해시 이벤트 리스너 즉시 등록
         window.addEventListener('hashchange', () => { this.handleRoute(); });
 
-        this._realtimeDebounce = null;
-        DB.subscribe(() => {
-            if (this._isEditingForm()) return;
-            if (this.currentPage && this.currentPage !== 'login') {
-                clearTimeout(this._realtimeDebounce);
-                this._realtimeDebounce = setTimeout(() => {
-                    if (!this._isEditingForm()) {
-                        this.renderPage(this.currentPage, { silent: true });
-                    }
-                }, 500);
-            }
-        });
+        // 2. 세션 복구 (sessionStorage → 동기, Supabase Auth → 비동기)
+        const savedSession = (() => {
+            try { return JSON.parse(sessionStorage.getItem('_auth_session')); } catch(e) { return null; }
+        })();
 
-        // 초기 라우팅
+        // 3. 즉시 라우팅 (세션 기반 판단, 네트워크 대기 없음)
         if (!window.location.hash || window.location.hash === '#/') {
-            this.navigate(Auth.isLoggedIn() ? 'dashboard' : 'login');
+            this.navigate(savedSession ? 'dashboard' : 'login');
         } else {
             await this.handleRoute();
         }
+
+        // 4. 백그라운드에서 계정 초기화 + 시드 데이터
+        (async () => {
+            try {
+                await Auth.initDemoAccounts();
+                const { data: seedFlag } = await window._supabase
+                    .from('settings').select('value').eq('key', 'seed_disabled').maybeSingle();
+                if (!seedFlag || seedFlag.value !== 'true') {
+                    await this.seedDemoData();
+                }
+                // 5. 실시간 구독 (시드 완료 후)
+                this._realtimeDebounce = null;
+                DB.subscribe(() => {
+                    if (this._isEditingForm()) return;
+                    if (this.currentPage && this.currentPage !== 'login') {
+                        clearTimeout(this._realtimeDebounce);
+                        this._realtimeDebounce = setTimeout(() => {
+                            if (!this._isEditingForm()) {
+                                this.renderPage(this.currentPage, { silent: true });
+                            }
+                        }, 500);
+                    }
+                });
+                // 6. 현재 페이지 데이터 갱신
+                if (this.currentPage && this.currentPage !== 'login') {
+                    this.renderPage(this.currentPage, { silent: true });
+                }
+            } catch(err) {
+                console.error('Background init error:', err);
+            }
+        })();
     },
 
     async handleRoute() {

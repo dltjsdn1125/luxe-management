@@ -9,12 +9,12 @@ const LoginPage = {
                     <div class="wope-logo-icon w-10 h-10 rounded-lg flex items-center justify-center">
                         <span class="material-symbols-outlined text-white text-xl font-light">diamond</span>
                     </div>
-                    <h2 class="text-xl font-bold tracking-tight text-white">LUXE<span class="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-violet-400">MGMT</span></h2>
+                    <h2 class="text-xl font-bold tracking-tight text-white">LUXE<span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-500">MGMT</span></h2>
                 </div>
                 <nav class="flex items-center gap-8">
                     <a href="#" data-scroll-to="features" class="text-sm font-medium text-slate-400 hover:text-white transition-colors hidden sm:inline">기능</a>
                     <a href="#" data-scroll-to="faq" class="text-sm font-medium text-slate-400 hover:text-white transition-colors hidden sm:inline">FAQ</a>
-                    <a href="#" data-scroll-to="login-section" class="text-sm font-medium text-fuchsia-400 hover:text-fuchsia-300 transition-colors">로그인</a>
+                    <a href="#" data-scroll-to="login-section" class="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors">로그인</a>
                 </nav>
             </header>
 
@@ -23,22 +23,22 @@ const LoginPage = {
                 <div class="absolute inset-0 wope-hero-glow"></div>
                 <!-- Centered Hero Text -->
                 <div class="relative max-w-4xl mx-auto text-center space-y-8 mb-16">
-                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-400 text-xs font-semibold tracking-wider">
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold tracking-wider">
                         <span class="relative flex h-2 w-2">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-fuchsia-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-2 w-2 bg-fuchsia-400"></span>
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-400"></span>
                         </span>
                         통합 영업관리 시스템
                     </div>
                     <h1 class="text-4xl lg:text-6xl xl:text-7xl font-bold leading-[1.1] tracking-tight text-white">
-                        새로운 <span class="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 via-violet-400 to-purple-500">영업관리</span>의 시작
+                        새로운 <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600">영업관리</span>의 시작
                     </h1>
                     <p class="text-slate-400 text-lg lg:text-xl leading-relaxed max-w-2xl mx-auto">
                         일일정산, 직원성과, 외상관리, 주류재고를 하나의 플랫폼에서 통합 관리하세요.
                     </p>
                     <div class="flex flex-wrap gap-4 justify-center pt-2">
                         <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10">
-                            <span class="material-symbols-outlined text-fuchsia-400 text-lg">verified</span>
+                            <span class="material-symbols-outlined text-blue-400 text-lg">verified</span>
                             <span class="text-sm font-medium text-slate-300">실시간 정산</span>
                         </div>
                         <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10">
@@ -46,7 +46,7 @@ const LoginPage = {
                             <span class="text-sm font-medium text-slate-300">모바일 최적화</span>
                         </div>
                         <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10">
-                            <span class="material-symbols-outlined text-purple-400 text-lg">shield</span>
+                            <span class="material-symbols-outlined text-blue-400 text-lg">shield</span>
                             <span class="text-sm font-medium text-slate-300">권한별 접근</span>
                         </div>
                     </div>
@@ -55,7 +55,7 @@ const LoginPage = {
                 <!-- Product Screenshot Preview -->
                 <div class="relative max-w-6xl mx-auto">
                     <!-- Glow behind screenshot -->
-                    <div class="absolute -inset-10 bg-gradient-to-b from-fuchsia-500/10 via-violet-500/8 to-transparent rounded-3xl blur-3xl pointer-events-none"></div>
+                    <div class="absolute -inset-10 bg-gradient-to-b from-blue-500/10 via-blue-500/8 to-transparent rounded-3xl blur-3xl pointer-events-none"></div>
                     <!-- Screenshot container with perspective -->
                     <div class="product-screenshot-wrap relative">
                         <div class="product-screenshot-inner rounded-xl lg:rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/50">
@@ -73,7 +73,7 @@ const LoginPage = {
             <!-- Login Section - overlapping screenshot -->
             <section id="login-section" class="relative px-6 lg:px-20 -mt-32 lg:-mt-40 pb-20 z-10">
                 <div class="max-w-md mx-auto">
-                    <div class="absolute -inset-1 bg-gradient-to-r from-fuchsia-500/40 via-violet-500/40 to-purple-500/40 rounded-2xl blur-xl opacity-60 max-w-md mx-auto left-6 right-6 lg:left-auto lg:right-auto"></div>
+                    <div class="absolute -inset-1 bg-gradient-to-r from-blue-500/40 via-blue-500/40 to-blue-600/40 rounded-2xl blur-xl opacity-60 max-w-md mx-auto left-6 right-6 lg:left-auto lg:right-auto"></div>
                     <div class="relative wope-glass p-8 lg:p-10 rounded-2xl border border-white/10 shadow-2xl">
                         <div class="mb-8 text-center">
                             <h3 class="text-2xl font-bold text-white mb-2">관리자 로그인</h3>
@@ -84,25 +84,25 @@ const LoginPage = {
                                 <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1">아이디</label>
                                 <div class="relative group">
                                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <span class="material-symbols-outlined text-slate-500 group-focus-within:text-fuchsia-400 transition-colors">person</span>
+                                        <span class="material-symbols-outlined text-slate-500 group-focus-within:text-blue-400 transition-colors">person</span>
                                     </div>
-                                    <input id="login-username" class="w-full bg-black/40 border border-white/10 focus:border-fuchsia-500 focus:ring-1 focus:ring-fuchsia-500/50 rounded-xl py-4 pl-12 pr-4 text-white placeholder:text-slate-600 outline-none transition-all" placeholder="admin" type="text" value="admin"/>
+                                    <input id="login-username" class="w-full bg-black/40 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 rounded-xl py-4 pl-12 pr-4 text-white placeholder:text-slate-600 outline-none transition-all" placeholder="admin" type="text" value="admin"/>
                                 </div>
                             </div>
                             <div class="space-y-2">
                                 <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1">비밀번호</label>
                                 <div class="relative group">
                                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <span class="material-symbols-outlined text-slate-500 group-focus-within:text-fuchsia-400 transition-colors">lock</span>
+                                        <span class="material-symbols-outlined text-slate-500 group-focus-within:text-blue-400 transition-colors">lock</span>
                                     </div>
-                                    <input id="login-password" class="w-full bg-black/40 border border-white/10 focus:border-fuchsia-500 focus:ring-1 focus:ring-fuchsia-500/50 rounded-xl py-4 pl-12 pr-12 text-white placeholder:text-slate-600 outline-none transition-all" placeholder="••••••••" type="password" value="admin123"/>
+                                    <input id="login-password" class="w-full bg-black/40 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 rounded-xl py-4 pl-12 pr-12 text-white placeholder:text-slate-600 outline-none transition-all" placeholder="••••••••" type="password" value="admin123"/>
                                     <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-slate-300">
                                         <span class="material-symbols-outlined text-[20px]">visibility</span>
                                     </button>
                                 </div>
                             </div>
                             <div id="login-error" class="hidden text-red-300 text-sm text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20"></div>
-                            <button type="submit" class="w-full py-4 bg-gradient-to-r from-fuchsia-500 to-violet-500 hover:from-fuchsia-600 hover:to-violet-600 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 group shadow-lg shadow-fuchsia-500/25">
+                            <button type="submit" class="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 group shadow-lg shadow-blue-500/25">
                                 로그인
                                 <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
                             </button>
@@ -121,22 +121,22 @@ const LoginPage = {
                     <p class="text-slate-400 text-center mb-16 max-w-xl mx-auto">직관적인 인터페이스로 복잡한 정산과 관리를 간편하게</p>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="wope-feature-card p-8 rounded-2xl border border-white/10">
-                            <div class="w-12 h-12 rounded-xl bg-fuchsia-500/20 flex items-center justify-center mb-6">
-                                <span class="material-symbols-outlined text-fuchsia-400 text-2xl">insights</span>
+                            <div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-6">
+                                <span class="material-symbols-outlined text-blue-400 text-2xl">insights</span>
                             </div>
                             <h3 class="text-lg font-bold text-white mb-3">일일정산 분석</h3>
                             <p class="text-slate-400 text-sm leading-relaxed">실시간 매출·정산 데이터를 한눈에 확인하고, 직원별·일별 성과를 추적하세요.</p>
                         </div>
                         <div class="wope-feature-card p-8 rounded-2xl border border-white/10">
-                            <div class="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center mb-6">
-                                <span class="material-symbols-outlined text-violet-400 text-2xl">groups</span>
+                            <div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-6">
+                                <span class="material-symbols-outlined text-blue-400 text-2xl">groups</span>
                             </div>
                             <h3 class="text-lg font-bold text-white mb-3">통합 직원관리</h3>
                             <p class="text-slate-400 text-sm leading-relaxed">직원·아가씨 관리, 외상·주류재고를 통합하여 효율적으로 운영하세요.</p>
                         </div>
                         <div class="wope-feature-card p-8 rounded-2xl border border-white/10">
-                            <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center mb-6">
-                                <span class="material-symbols-outlined text-purple-400 text-2xl">liquor</span>
+                            <div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-6">
+                                <span class="material-symbols-outlined text-blue-400 text-2xl">liquor</span>
                             </div>
                             <h3 class="text-lg font-bold text-white mb-3">주류재고 추적</h3>
                             <p class="text-slate-400 text-sm leading-relaxed">실시간 재고 현황 파악, 발주·입출고 자동 기록으로 손실을 최소화하세요.</p>
@@ -148,7 +148,7 @@ const LoginPage = {
             <!-- Second Screenshot Section -->
             <section class="px-6 lg:px-20 py-16 overflow-hidden">
                 <div class="max-w-5xl mx-auto relative">
-                    <div class="absolute -inset-10 bg-gradient-to-b from-violet-500/8 via-fuchsia-500/5 to-transparent rounded-3xl blur-3xl pointer-events-none"></div>
+                    <div class="absolute -inset-10 bg-gradient-to-b from-blue-500/8 via-blue-500/5 to-transparent rounded-3xl blur-3xl pointer-events-none"></div>
                     <div class="product-screenshot-wrap-flat relative rounded-xl lg:rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/50">
                         <img src="assets/inventory-preview.png" alt="LUXE MGMT 주류관리" class="w-full h-auto block" loading="lazy"/>
                         <!-- Gradient fade at edges -->
@@ -191,7 +191,7 @@ const LoginPage = {
                     </div>
                     <h2 class="text-3xl lg:text-4xl font-bold text-white mb-4">지금 바로 시작하세요</h2>
                     <p class="text-slate-400 mb-8">LUXE MGMT로 매장 운영의 새로운 기준을 경험해 보세요.</p>
-                    <a href="#" data-scroll-to="login-section" class="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-fuchsia-500 to-violet-500 hover:from-fuchsia-600 hover:to-violet-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-fuchsia-500/25">
+                    <a href="#" data-scroll-to="login-section" class="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/25">
                         로그인하기
                         <span class="material-symbols-outlined text-xl">arrow_forward</span>
                     </a>

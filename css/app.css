@@ -63,12 +63,12 @@ body {
                 radial-gradient(circle at 80% 70%, rgba(157, 80, 187, 0.1) 0%, transparent 50%);
 }
 
-/* Wope-style landing (dark purple/magenta) */
+/* Wope-style landing (blue theme) */
 .wope-landing {
     background: #06050a;
     background-image:
-        radial-gradient(ellipse 80% 50% at 50% 20%, rgba(192, 132, 252, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(217, 70, 239, 0.06) 0%, transparent 50%);
+        radial-gradient(ellipse 80% 50% at 50% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(37, 99, 235, 0.06) 0%, transparent 50%);
 }
 .wope-hero-glow {
     position: absolute;
@@ -76,7 +76,7 @@ body {
     right: 0;
     top: 30%;
     height: 40%;
-    background: linear-gradient(90deg, transparent 0%, rgba(192, 132, 252, 0.06) 30%, rgba(217, 70, 239, 0.08) 50%, rgba(192, 132, 252, 0.06) 70%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.06) 30%, rgba(37, 99, 235, 0.08) 50%, rgba(59, 130, 246, 0.06) 70%, transparent 100%);
     pointer-events: none;
 }
 .wope-cta-glow {
@@ -85,7 +85,7 @@ body {
     right: 0;
     top: 0;
     bottom: 0;
-    background: linear-gradient(90deg, transparent 0%, rgba(192, 132, 252, 0.05) 20%, rgba(217, 70, 239, 0.08) 50%, rgba(192, 132, 252, 0.05) 80%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.05) 20%, rgba(37, 99, 235, 0.08) 50%, rgba(59, 130, 246, 0.05) 80%, transparent 100%);
     pointer-events: none;
 }
 .wope-glass {
@@ -95,8 +95,8 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .wope-logo-icon {
-    background: linear-gradient(135deg, rgba(217, 70, 239, 0.3), rgba(139, 92, 246, 0.3));
-    box-shadow: 0 0 20px rgba(217, 70, 239, 0.2);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3));
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
 }
 .wope-feature-card {
     background: rgba(255, 255, 255, 0.02);
@@ -104,7 +104,7 @@ body {
 }
 .wope-feature-card:hover {
     background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(192, 132, 252, 0.2);
+    border-color: rgba(59, 130, 246, 0.2);
 }
 
 /* Product screenshot with perspective tilt */
@@ -137,7 +137,7 @@ body {
 
 /* Neon glow */
 .neon-glow { box-shadow: 0 0 15px rgba(0, 242, 255, 0.2); }
-.neon-glow-purple { box-shadow: 0 0 15px rgba(157, 80, 187, 0.3); }
+.neon-glow-purple { box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
 
 /* Page transitions */
 .page-enter { animation: fadeIn 0.2s ease-out; }
@@ -227,4 +227,14 @@ table {
     .settings-section table { min-width: 600px; }
     .settings-section input,
     .settings-section select { font-size: 12px; }
+}
+
+/* 데스크톱: 본문 폰트 대시보드 수준 (사이드바/헤더 제외, 모바일은 현행 유지) */
+@media (min-width: 768px) {
+    #app-content .text-\[10px\] {
+        font-size: 0.75rem; /* 12px, text-xs 수준 */
+    }
+    #app-content .text-xs {
+        font-size: 0.8125rem; /* 13px */
+    }
 }

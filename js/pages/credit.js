@@ -364,18 +364,39 @@ const CreditPage = {
                                 </div>
                             </div>` : ''}
 
-                            <div class="border-t border-slate-800/50 pt-2 mt-2 grid grid-cols-3 gap-2 text-center text-xs">
-                                <div><span class="text-slate-400">주대</span><p class="text-white font-mono font-bold text-sm">${Format.number(r.joodae || 0)}</p></div>
-                                <div><span class="text-slate-400">T/C</span><p class="text-white font-mono font-bold text-sm">${Format.number(r.tc_amount || 0)}</p></div>
-                                <div><span class="text-slate-400">룸 매출</span><p class="text-blue-400 font-mono font-bold text-sm">${Format.number(r.room_revenue || 0)}</p></div>
-                            </div>
-
-                            <div class="border-t border-slate-800/50 pt-2 mt-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs">
-                                ${r.pay_cash ? `<div class="flex justify-between"><span class="text-slate-400">현금</span><span class="text-white font-mono">${Format.number(r.pay_cash)}</span></div>` : ''}
-                                ${r.pay_card ? `<div class="flex justify-between"><span class="text-slate-400">카드</span><span class="text-white font-mono">${Format.number(r.pay_card)}</span></div>` : ''}
-                                ${r.pay_borrowing ? `<div class="flex justify-between"><span class="text-slate-400">차용</span><span class="text-white font-mono">${Format.number(r.pay_borrowing)}</span></div>` : ''}
-                                ${r.pay_credit ? `<div class="flex justify-between"><span class="text-red-300">외상</span><span class="text-red-300 font-mono font-bold">${Format.number(r.pay_credit)}</span></div>` : ''}
-                                ${r.pay_other ? `<div class="flex justify-between"><span class="text-slate-400">기타</span><span class="text-white font-mono">${Format.number(r.pay_other)}</span></div>` : ''}
+                            <div class="border-t border-slate-800/50 mt-2 divide-y divide-slate-800/40 text-xs">
+                                <div class="flex items-center justify-between px-1 py-1.5">
+                                    <span class="text-slate-400 w-16">주대</span>
+                                    <span class="text-white font-mono font-bold text-sm">${Format.number(r.joodae || 0)}</span>
+                                </div>
+                                <div class="flex items-center justify-between px-1 py-1.5">
+                                    <span class="text-slate-400 w-16">T/C</span>
+                                    <span class="text-white font-mono font-bold text-sm">${Format.number(r.tc_amount || 0)}</span>
+                                </div>
+                                <div class="flex items-center justify-between px-1 py-1.5 bg-blue-500/5">
+                                    <span class="text-blue-400 w-16 font-semibold">룸 매출</span>
+                                    <span class="text-blue-400 font-mono font-bold text-sm">${Format.number(r.room_revenue || 0)}</span>
+                                </div>
+                                ${r.pay_cash ? `<div class="flex items-center justify-between px-1 py-1.5">
+                                    <span class="text-slate-400 w-16">현금</span>
+                                    <span class="text-white font-mono font-bold text-sm">${Format.number(r.pay_cash)}</span>
+                                </div>` : ''}
+                                ${r.pay_card ? `<div class="flex items-center justify-between px-1 py-1.5">
+                                    <span class="text-slate-400 w-16">카드</span>
+                                    <span class="text-white font-mono font-bold text-sm">${Format.number(r.pay_card)}</span>
+                                </div>` : ''}
+                                ${r.pay_borrowing ? `<div class="flex items-center justify-between px-1 py-1.5">
+                                    <span class="text-slate-400 w-16">차용</span>
+                                    <span class="text-white font-mono font-bold text-sm">${Format.number(r.pay_borrowing)}</span>
+                                </div>` : ''}
+                                ${r.pay_credit ? `<div class="flex items-center justify-between px-1 py-1.5 bg-red-500/5">
+                                    <span class="text-red-300 w-16 font-semibold">외상</span>
+                                    <span class="text-red-300 font-mono font-bold text-sm">${Format.number(r.pay_credit)}</span>
+                                </div>` : ''}
+                                ${r.pay_other ? `<div class="flex items-center justify-between px-1 py-1.5">
+                                    <span class="text-slate-400 w-16">기타</span>
+                                    <span class="text-white font-mono font-bold text-sm">${Format.number(r.pay_other)}</span>
+                                </div>` : ''}
                             </div>
                         </div>`).join('')}
 

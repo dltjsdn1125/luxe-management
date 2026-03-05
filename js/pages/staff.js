@@ -135,11 +135,12 @@ const StaffPage = {
             </div>
         </div>
 
-        <!-- 인센티브 설정 (와리율) -->
+        <!-- 인센티브 설정 (와리율) - 관리자만 수정, 지점은 조회만 -->
         <div class="bg-slate-900/50 p-3 md:p-4 rounded-xl border border-slate-800">
             <div class="flex items-center gap-2 mb-3">
                 <span class="material-symbols-outlined text-yellow-300 text-base">settings</span>
-                <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400">와리율 설정</h3>
+                <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400">와리율</h3>
+                ${!Auth.isAdmin() ? '<span class="text-[10px] text-slate-500">(관리자 적용)</span>' : ''}
             </div>
 
             <p class="text-[10px] text-slate-600 mb-2">직원 와리율</p>
@@ -148,11 +149,13 @@ const StaffPage = {
                     <div class="text-xs font-bold">${s.name} 와리율</div>
                     <div class="text-[10px] text-slate-500">매출 대비 인센티브</div>
                 </div>
+                ${Auth.isAdmin() ? `
                 <div class="flex items-center gap-1.5">
                     <input class="w-10 bg-slate-900 border-slate-700 rounded text-center text-xs focus:ring-blue-500 rate-input" data-field="incentive_rate" data-staff="${s.id}" type="text" value="${s.incentive_rate}"/>
                     <span class="text-xs font-bold text-slate-500">%</span>
                 </div>
                 <button class="px-3 py-1.5 bg-gradient-to-r from-yellow-300 to-yellow-400 text-slate-900 font-bold text-xs rounded-lg hover:shadow-lg transition-all btn-save-rate" data-staff="${s.id}">적용</button>
+                ` : `<span class="text-sm font-bold text-yellow-300">${s.incentive_rate}%</span>`}
             </div>
 
             <p class="text-[10px] text-slate-600 mb-2 pt-2 border-t border-slate-800">아가씨 와리율</p>
@@ -162,11 +165,13 @@ const StaffPage = {
                     return branchGirls.map(g => `
                     <div class="flex items-center gap-3 p-2.5 bg-slate-800/50 rounded-lg border border-slate-700">
                         <span class="text-xs font-bold text-pink-400 flex-1">${g.name}</span>
+                        ${Auth.isAdmin() ? `
                         <div class="flex items-center gap-1.5">
                             <input class="w-10 bg-slate-900 border-slate-700 rounded text-center text-xs focus:ring-blue-500 girl-rate-input" data-girl="${g.id}" type="text" value="${g.incentive_rate || 0}"/>
                             <span class="text-xs font-bold text-slate-500">%</span>
                         </div>
                         <button class="px-3 py-1.5 bg-gradient-to-r from-pink-400 to-pink-500 text-white font-bold text-xs rounded-lg hover:shadow-lg transition-all btn-save-girl-rate" data-girl="${g.id}">적용</button>
+                        ` : `<span class="text-sm font-bold text-pink-400">${g.incentive_rate || 0}%</span>`}
                     </div>`).join('');
                 })()}
             </div>

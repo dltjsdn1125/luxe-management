@@ -2,6 +2,9 @@
 <html class="dark" lang="ko">
 <head>
     <meta charset="utf-8"/>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <title>LUXE MGMT - 통합 영업관리 시스템</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
@@ -211,7 +214,12 @@
 
     <!-- Main Content -->
     <div id="main-wrapper">
-        <main id="app-content" class="min-h-screen"></main>
+        <main id="app-content" class="min-h-screen flex items-center justify-center">
+            <div id="app-loading" class="flex flex-col items-center gap-4 text-slate-400">
+                <span class="material-symbols-outlined animate-spin text-4xl">progress_activity</span>
+                <p class="text-sm">로딩 중...</p>
+            </div>
+        </main>
     </div>
 
     <!-- Footer -->
@@ -249,8 +257,8 @@
     <script src="js/app.js?v=50"></script>
     <script src="js/pages/login.js?v=46"></script>
     <script src="js/pages/dashboard.js?v=46"></script>
-    <script src="js/pages/settlement.js?v=55"></script>
-    <script src="js/pages/credit.js?v=46"></script>
+    <script src="js/pages/settlement.js?v=60"></script>
+    <script src="js/pages/credit.js?v=60"></script>
     <script src="js/pages/staff.js?v=46"></script>
     <script src="js/pages/inventory.js?v=46"></script>
     <script src="js/pages/girls.js?v=46"></script>
@@ -294,7 +302,15 @@
             }
 
             // 앱 초기화 (async)
-            App.init().catch(err => console.error('App init error:', err));
+            App.init().catch(err => {
+                console.error('App init error:', err);
+                const loading = document.getElementById('app-loading');
+                const content = document.getElementById('app-content');
+                if (loading && content) {
+                    loading.remove();
+                    content.innerHTML = '<div class="flex flex-col items-center gap-4 text-center max-w-md px-4"><span class="material-symbols-outlined text-red-400 text-5xl">cloud_off</span><p class="text-slate-300">서버에 연결할 수 없습니다.</p><p class="text-slate-500 text-sm">인터넷 연결과 Supabase 설정을 확인한 후 새로고침해주세요.</p><button onclick="location.reload()" class="mt-4 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-bold">새로고침</button></div>';
+                }
+            });
         });
     </script>
 </body>

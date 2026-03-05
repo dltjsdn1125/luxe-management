@@ -26,7 +26,17 @@ const GirlsPage = {
         const staff = await DB.getAll('staff');
         let payments = await DB.getAll('girl_payments');
         const isAdmin = Auth.isAdmin();
-        const fullAttDays = await this.getFullAttendanceDays();
+        // 지점별 만근기준: 필터 시 해당 지점, 미필터 시 로그인 직원 지점
+        let branchIdForFullAtt = null;
+        if (isAdmin && this.filterStaffId) {
+            const selStaff = staff.find(s => s.id === this.filterStaffId);
+            if (selStaff?.branch_name) {
+                const branches = await DB.getAll('branches');
+                const b = branches.find(x => x.name === selStaff.branch_name);
+                if (b) branchIdForFullAtt = b.id;
+            }
+        }
+        const fullAttDays = await this.getFullAttendanceDays(branchIdForFullAtt);
         const thisMonth = Format.today().substring(0, 7);
 
         if (!isAdmin) {
@@ -75,8 +85,14 @@ const GirlsPage = {
                     const totalPaid = gPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
                     const monthlyPayments = gPayments.filter(p => p.date && p.date.startsWith(thisMonth));
                     const workDays = monthlyPayments.filter(p => p.type === 'standby').length;
+                    const eventCount = monthlyPayments.filter(p => p.type === 'event').length;
                     const monthlyPaid = monthlyPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
                     const isFullAtt = workDays >= fullAttDays;
+                    const standbyFee = g.standby_fee || 0;
+                    const eventFee = g.event_fee || 0;
+                    const expectedStandby = workDays * standbyFee;
+                    const expectedEvent = eventCount * eventFee;
+                    const expectedTotal = expectedStandby + expectedEvent;
 
                     return `
                     <div class="bg-slate-900 p-4 md:p-5 rounded-xl border ${isFullAtt ? 'border-emerald-500/30 bg-gradient-to-br from-slate-900 to-emerald-950/10' : 'border-slate-800'} ${!g.active ? 'opacity-50' : ''}">
@@ -109,9 +125,10 @@ const GirlsPage = {
                                 <p class="font-bold text-white text-xs">${Format.number(totalPaid)}</p>
                             </div>
                         </div>
-                        <div class="flex gap-3 text-[10px] text-slate-500 mb-3 px-1">
-                            <span>대기비: <b class="text-blue-400">${Format.number(g.standby_fee || 0)}</b></span>
-                            <span>이벤트: <b class="text-purple-400">${Format.number(g.event_fee || 0)}</b></span>
+                        <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 mb-3 px-1">
+                            <span>대기비: <b class="text-blue-400">${Format.number(standbyFee)}</b> (${workDays}일)</span>
+                            <span>이벤트: <b class="text-purple-400">${Format.number(eventFee)}</b> (${eventCount}건)</span>
+                            ${expectedTotal > 0 ? `<span class="text-emerald-400/80">예상: ${Format.number(expectedTotal)}</span>` : ''}
                         </div>
                         <div class="flex gap-2">
                             <button class="flex-1 text-xs text-blue-500 font-bold py-1.5 bg-blue-500/10 rounded-lg hover:bg-blue-500/20 transition-colors" data-girl-detail="${g.id}">상세</button>
