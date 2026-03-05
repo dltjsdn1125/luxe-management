@@ -43,36 +43,32 @@ const InventoryPage = {
 
     async render(container) {
         this._destroyCharts();
-        const liquors = await DB.getAll('liquor');
-        const allInventory = await DB.getAll('liquor_inventory');
-        const effectiveBranchId = await this._getEffectiveBranchId();
-        let orders = (await DB.getAll('liquor_orders')).sort((a, b) => b.date.localeCompare(a.date));
         const isAdmin = Auth.isAdmin();
         const range = PeriodFilter.getRange(this.periodType, this.customFrom, this.customTo);
         const staff = await DB.getAll('staff');
 
-        orders = PeriodFilter.filterByDate(orders, 'date', range.from, range.to);
-
-        // 지점 목록
-        const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
-
+        // 지점 staff ID 목록 결정
+        let staffIds = null;
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
             const myStaff = staff.find(s => s.id === staffId);
-            if (myStaff?.branch_name) {
-                const branchStaffIds = staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id);
-                orders = orders.filter(o => branchStaffIds.includes(o.entered_by));
-            } else {
-                orders = orders.filter(o => o.entered_by === staffId);
-            }
+            staffIds = myStaff?.branch_name
+                ? staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id)
+                : [staffId];
         } else if (this.filterBranch) {
-            const branchStaffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
-            orders = orders.filter(o => branchStaffIds.includes(o.entered_by));
+            staffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
         }
 
-        // 판매 데이터 (정산에서 추출)
-        const allSales = await DB.getAll('daily_sales');
-        const salesInRange = PeriodFilter.filterByDate(allSales, 'date', range.from, range.to);
+        const [liquors, allInventory, orders, salesInRange] = await Promise.all([
+            DB.getAll('liquor'),
+            DB.getAll('liquor_inventory'),
+            DB.getFiltered('liquor_orders', { from: range.from, to: range.to, staffIds, staffField: 'entered_by', orderField: 'date', orderAsc: false }),
+            DB.getFiltered('daily_sales',   { from: range.from, to: range.to, orderField: 'date', orderAsc: false }),
+        ]);
+        const effectiveBranchId = await this._getEffectiveBranchId();
+
+        // 지점 목록
+        const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
 
         // 발주내역: 지점별 → 직원별 아코디언 구조 생성
         const buildOrderAccordion = (ordersToShow) => {

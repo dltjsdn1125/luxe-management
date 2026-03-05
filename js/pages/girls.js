@@ -26,26 +26,36 @@ const GirlsPage = {
         this._destroyCharts();
         const allGirls = await DB.getAll('girls');
         const staff = await DB.getAll('staff');
-        let allPayments = await DB.getAll('girl_payments');
         const isAdmin = Auth.isAdmin();
         const thisMonth = Format.today().substring(0, 7);
+        const monthStart = thisMonth + '-01';
+        const monthEnd  = thisMonth + '-' + String(new Date(Number(thisMonth.split('-')[0]), Number(thisMonth.split('-')[1]), 0).getDate()).padStart(2, '0');
 
         // 비관리자: 본인 지점 아가씨 전원 (지점 데이터 격리)
         let girls = allGirls;
-        let payments = allPayments;
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
             const myStaff = staff.find(s => s.id === staffId);
             if (myStaff?.branch_name) {
                 const branchStaffIds = staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id);
                 girls = allGirls.filter(g => branchStaffIds.includes(g.staff_id));
-                const girlIds = girls.map(g => g.id);
-                payments = allPayments.filter(p => girlIds.includes(p.girl_id));
             } else {
-                girls = allGirls.filter(g => g.staff_id === staffId || g.entered_by === staffId);
-                const girlIds = girls.map(g => g.id);
-                payments = allPayments.filter(p => girlIds.includes(p.girl_id) || p.entered_by === staffId);
+                girls = allGirls.filter(g => g.staff_id === staffId);
             }
+        }
+
+        // girl_payments: 이번 달 + 해당 아가씨만 DB 레벨 쿼리 (1000건 제한 우회)
+        const girlIds = girls.map(g => g.id);
+        let payments = [];
+        if (girlIds.length > 0) {
+            const { data, error } = await window._supabase
+                .from('girl_payments')
+                .select('*')
+                .eq('_deleted', false)
+                .in('girl_id', girlIds)
+                .gte('date', monthStart)
+                .lte('date', monthEnd);
+            if (!error && data) payments = data;
         }
 
         // 지점 목록 (staff.branch_name 기준)

@@ -7,29 +7,26 @@ const ExpensesPage = {
     customTo: null,
 
     async render(container) {
-        const categories = await DB.getAll('expense_categories');
-        let expenses = (await DB.getAll('expenses')).sort((a, b) => b.date.localeCompare(a.date));
         const isAdmin = Auth.isAdmin();
         const staff = await DB.getAll('staff');
         const range = PeriodFilter.getRange(this.periodType, this.customFrom, this.customTo);
 
-        // 기간 필터 적용
-        expenses = PeriodFilter.filterByDate(expenses, 'date', range.from, range.to);
-
-        // 지점 계정: 본인 지점 지출 전부
+        // 지점 staff ID 목록 결정
+        let staffIds = null;
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
             const myStaff = staff.find(s => s.id === staffId);
-            if (myStaff?.branch_name) {
-                const branchStaffIds = staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id);
-                expenses = expenses.filter(e => branchStaffIds.includes(e.entered_by));
-            } else {
-                expenses = expenses.filter(e => e.entered_by === staffId);
-            }
+            staffIds = myStaff?.branch_name
+                ? staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id)
+                : [staffId];
         } else if (this.filterBranch) {
-            const branchStaffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
-            expenses = expenses.filter(e => branchStaffIds.includes(e.entered_by));
+            staffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
         }
+
+        const [categories, expenses] = await Promise.all([
+            DB.getAll('expense_categories'),
+            DB.getFiltered('expenses', { from: range.from, to: range.to, staffIds, staffField: 'entered_by', orderField: 'date', orderAsc: false }),
+        ]);
 
         // 지점 목록
         const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();

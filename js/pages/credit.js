@@ -8,27 +8,38 @@ const CreditPage = {
     customTo: null,
 
     async render(container) {
-        let receivables = (await DB.getAll('receivables')).sort((a, b) => b.date.localeCompare(a.date));
         const staff = await DB.getAll('staff');
         const isAdmin = Auth.isAdmin();
         const range = PeriodFilter.getRange(this.periodType, this.customFrom, this.customTo);
 
-        // 기간 필터 적용
-        receivables = PeriodFilter.filterByDate(receivables, 'date', range.from, range.to);
-
-        // 지점 계정: 본인 지점 외상 전부 (관리자와 동일 데이터)
+        // 지점 staff ID 목록 결정
+        let staffIds = null;
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
             const myStaff = staff.find(s => s.id === staffId);
-            if (myStaff?.branch_name) {
-                const branchStaffIds = staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id);
-                receivables = receivables.filter(r => branchStaffIds.includes(r.staff_id) || branchStaffIds.includes(r.entered_by));
-            } else {
-                receivables = receivables.filter(r => r.staff_id === staffId || r.entered_by === staffId);
-            }
+            staffIds = myStaff?.branch_name
+                ? staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id)
+                : [staffId];
         } else if (this.filterBranch) {
-            const branchStaffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
-            receivables = receivables.filter(r => branchStaffIds.includes(r.staff_id) || branchStaffIds.includes(r.entered_by));
+            staffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
+        }
+
+        // DB 레벨에서 날짜+지점 필터 (staff_id 기준)
+        let receivables = await DB.getFiltered('receivables', {
+            dateField: 'date', from: range.from, to: range.to,
+            staffIds, staffField: 'staff_id',
+            orderField: 'date', orderAsc: false,
+        });
+        // entered_by 기준 추가 조회 (staff_id와 다를 수 있음)
+        if (staffIds) {
+            const byEntered = await DB.getFiltered('receivables', {
+                dateField: 'date', from: range.from, to: range.to,
+                staffIds, staffField: 'entered_by',
+                orderField: 'date', orderAsc: false,
+            });
+            const existingIds = new Set(receivables.map(r => r.id));
+            byEntered.forEach(r => { if (!existingIds.has(r.id)) receivables.push(r); });
+            receivables.sort((a, b) => b.date.localeCompare(a.date));
         }
 
         // 지점 목록

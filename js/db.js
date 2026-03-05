@@ -11,8 +11,39 @@ const DB = {
             .from(table)
             .select('*')
             .eq('_deleted', false)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: true })
+            .limit(2000);
         if (error) { console.error(`DB.getAll(${table}):`, error); return []; }
+        return data || [];
+    },
+
+    // 날짜 범위 + 지점(entered_by/staff_id) 조건을 DB 레벨에서 처리
+    // opts: { dateField, from, to, staffIds, staffField, orderField, orderAsc, limit }
+    async getFiltered(table, opts = {}) {
+        const {
+            dateField = 'date',
+            from,
+            to,
+            staffIds,           // string[] - entered_by 또는 staff_id 필터
+            staffField = 'entered_by',
+            orderField = 'date',
+            orderAsc = false,
+            limit = 2000,
+        } = opts;
+
+        let q = this._sb()
+            .from(table)
+            .select('*')
+            .eq('_deleted', false);
+
+        if (from) q = q.gte(dateField, from);
+        if (to)   q = q.lte(dateField, to);
+        if (staffIds && staffIds.length > 0) q = q.in(staffField, staffIds);
+
+        q = q.order(orderField, { ascending: orderAsc }).limit(limit);
+
+        const { data, error } = await q;
+        if (error) { console.error(`DB.getFiltered(${table}):`, error); return []; }
         return data || [];
     },
 

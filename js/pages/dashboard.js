@@ -68,11 +68,6 @@ const DashboardPage = {
     async renderAdmin(container) {
         const staff = await DB.getAll('staff');
         const range = PeriodFilter.getRange(this.periodType, this.customFrom, this.customTo);
-        const allSalesRaw = await DB.getAll('daily_sales');
-        const allExpensesRaw = await DB.getAll('expenses');
-        const allReceivablesRaw = await DB.getAll('receivables');
-        const liquors = await DB.getAll('liquor');
-        const inventory = await DB.getAll('liquor_inventory');
 
         // 지점 목록
         const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
@@ -83,21 +78,23 @@ const DashboardPage = {
             filteredStaff = staff.filter(s => s.branch_name === this.filterBranch);
         }
         const filteredStaffIds = filteredStaff.map(s => s.id);
+        const branchStaffIds = this.filterBranch ? filteredStaffIds : null;
 
-        const allSalesPeriod = PeriodFilter.filterByDate(allSalesRaw, 'date', range.from, range.to);
-        const allExpensesPeriod = PeriodFilter.filterByDate(allExpensesRaw, 'date', range.from, range.to);
-        const allReceivablesPeriod = PeriodFilter.filterByDate(allReceivablesRaw, 'date', range.from, range.to);
-
-        // 지점 필터 적용
-        const allSales = this.filterBranch
-            ? allSalesPeriod.filter(s => filteredStaffIds.includes(s.entered_by))
-            : allSalesPeriod;
-        const allExpenses = this.filterBranch
-            ? allExpensesPeriod.filter(e => filteredStaffIds.includes(e.entered_by))
-            : allExpensesPeriod;
-        const allReceivables = this.filterBranch
-            ? allReceivablesPeriod.filter(r => filteredStaffIds.includes(r.staff_id) || filteredStaffIds.includes(r.entered_by))
-            : allReceivablesPeriod;
+        // DB 레벨에서 날짜+지점 필터로 직접 쿼리
+        const [allSales, allExpenses, allReceivablesByStaff, allReceivablesByEntered, liquors, inventory] = await Promise.all([
+            DB.getFiltered('daily_sales', { from: range.from, to: range.to, staffIds: branchStaffIds, staffField: 'entered_by', orderField: 'date', orderAsc: false }),
+            DB.getFiltered('expenses',    { from: range.from, to: range.to, staffIds: branchStaffIds, staffField: 'entered_by', orderField: 'date', orderAsc: false }),
+            DB.getFiltered('receivables', { from: range.from, to: range.to, staffIds: branchStaffIds, staffField: 'staff_id',   orderField: 'date', orderAsc: false }),
+            branchStaffIds ? DB.getFiltered('receivables', { from: range.from, to: range.to, staffIds: branchStaffIds, staffField: 'entered_by', orderField: 'date', orderAsc: false }) : Promise.resolve([]),
+            DB.getAll('liquor'),
+            DB.getAll('liquor_inventory'),
+        ]);
+        // receivables: staff_id + entered_by 합집합
+        const allReceivables = allReceivablesByStaff.slice();
+        if (allReceivablesByEntered.length) {
+            const existIds = new Set(allReceivables.map(r => r.id));
+            allReceivablesByEntered.forEach(r => { if (!existIds.has(r.id)) allReceivables.push(r); });
+        }
 
         const totalRevenue = allSales.reduce((s, r) => s + (Number(r.total_revenue) || 0), 0);
         const totalExpense = allExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
@@ -156,11 +153,11 @@ const DashboardPage = {
         });
 
         // 매입/매출 데이터 (지점 필터 적용: 발주는 entered_by 기준)
-        const allOrdersRaw = await DB.getAll('liquor_orders');
-        let allOrders = PeriodFilter.filterByDate(allOrdersRaw, 'date', range.from, range.to);
-        if (this.filterBranch) {
-            allOrders = allOrders.filter(o => filteredStaffIds.includes(o.entered_by));
-        }
+        const allOrders = await DB.getFiltered('liquor_orders', {
+            from: range.from, to: range.to,
+            staffIds: branchStaffIds, staffField: 'entered_by',
+            orderField: 'date', orderAsc: false,
+        });
         const cashRevenue = allSales.reduce((s, r) => s + (Number(r.cash_amount) || 0), 0);
         const cardRevenue = allSales.reduce((s, r) => s + (Number(r.card_amount) || 0), 0);
         const creditRevenue = allSales.reduce((s, r) => s + (Number(r.credit_amount) || 0), 0);
@@ -794,13 +791,16 @@ const DashboardPage = {
         const isBranch = branchStaffIds.length > 1 || (branchStaffIds.length === 1 && myStaff?.branch_name);
         const labelMy = isBranch ? (myStaff?.branch_name || '지점') : '내';
 
-        const mySalesRaw = (await DB.getAll('daily_sales')).filter(s => branchStaffIds.includes(s.entered_by));
-        const myReceivablesRaw = (await DB.getAll('receivables')).filter(r => branchStaffIds.includes(r.staff_id) || branchStaffIds.includes(r.entered_by));
-        const myWariRaw = (await DB.getAll('wari')).filter(w => branchStaffIds.includes(w.staff_id));
-
-        const mySales = PeriodFilter.filterByDate(mySalesRaw, 'date', range.from, range.to).sort((a, b) => b.date.localeCompare(a.date));
-        const myReceivables = PeriodFilter.filterByDate(myReceivablesRaw, 'date', range.from, range.to);
-        const myWari = PeriodFilter.filterByDate(myWariRaw, 'date', range.from, range.to);
+        const [mySales, myReceivablesByStaff, myReceivablesByEntered, myWari] = await Promise.all([
+            DB.getFiltered('daily_sales', { from: range.from, to: range.to, staffIds: branchStaffIds, staffField: 'entered_by', orderField: 'date', orderAsc: false }),
+            DB.getFiltered('receivables', { from: range.from, to: range.to, staffIds: branchStaffIds, staffField: 'staff_id',   orderField: 'date', orderAsc: false }),
+            DB.getFiltered('receivables', { from: range.from, to: range.to, staffIds: branchStaffIds, staffField: 'entered_by', orderField: 'date', orderAsc: false }),
+            DB.getFiltered('wari',        { from: range.from, to: range.to, staffIds: branchStaffIds, staffField: 'staff_id',   orderField: 'date', orderAsc: false }),
+        ]);
+        // receivables: staff_id + entered_by 합집합
+        const myReceivables = myReceivablesByStaff.slice();
+        const existRecIds = new Set(myReceivables.map(r => r.id));
+        myReceivablesByEntered.forEach(r => { if (!existRecIds.has(r.id)) myReceivables.push(r); });
 
         const totalRevenue = mySales.reduce((s, r) => s + (Number(r.total_revenue) || 0), 0);
         // 와리: wari 테이블 + daily_sales에 기록된 와리 모두 합산 (더 큰 값 사용)
