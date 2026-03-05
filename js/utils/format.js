@@ -72,4 +72,32 @@ const Format = {
     }
 };
 
+// 페이지네이션 UI
+const Pagination = {
+    render(page, totalPages, total, pageSize = 50, prefix = 'pg') {
+        if (!totalPages || totalPages <= 1) return '';
+        const prev = page > 1 ? page - 1 : null;
+        const next = page < totalPages ? page + 1 : null;
+        const showPages = 5;
+        let start = Math.max(1, page - Math.floor(showPages / 2));
+        let end = Math.min(totalPages, start + showPages - 1);
+        if (end - start + 1 < showPages) start = Math.max(1, end - showPages + 1);
+        const pages = [];
+        for (let i = start; i <= end; i++) pages.push(i);
+        const from = total ? (page - 1) * pageSize + 1 : 0;
+        const to = total ? Math.min(page * pageSize, total) : 0;
+        const info = total != null ? `${Format.number(from)}-${Format.number(to)} / ${Format.number(total)}건` : '';
+        return `
+        <div class="flex items-center justify-between gap-4 py-3 px-4 border-t border-slate-800" data-pagination="${prefix}">
+            <span class="text-xs text-slate-500">${info}</span>
+            <div class="flex items-center gap-1">
+                <button class="pagin-btn px-2 py-1 rounded text-xs font-medium ${!prev ? 'opacity-40 cursor-not-allowed bg-slate-800' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}" data-page-num="${prev || ''}" data-prefix="${prefix}">이전</button>
+                ${pages.map(p => `<button class="pagin-btn px-2 py-1 rounded text-xs font-medium ${p === page ? 'bg-blue-500 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}" data-page-num="${p}" data-prefix="${prefix}">${p}</button>`).join('')}
+                <button class="pagin-btn px-2 py-1 rounded text-xs font-medium ${!next ? 'opacity-40 cursor-not-allowed bg-slate-800' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}" data-page-num="${next || ''}" data-prefix="${prefix}">다음</button>
+            </div>
+        </div>`;
+    }
+};
+
 window.Format = Format;
+window.Pagination = Pagination;

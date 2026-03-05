@@ -5,6 +5,8 @@ const ExpensesPage = {
     periodType: 'today',
     customFrom: null,
     customTo: null,
+    page: 1,
+    pageSize: 50,
 
     async render(container) {
         const isAdmin = Auth.isAdmin();
@@ -32,6 +34,9 @@ const ExpensesPage = {
         const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
 
         const periodTotal = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+        const totalExp = expenses.length;
+        const totalPages = Math.max(1, Math.ceil(totalExp / this.pageSize));
+        const pageExpenses = expenses.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
 
         // 카테고리별 합계
         const catTotals = {};
@@ -124,7 +129,7 @@ const ExpensesPage = {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-800">
-                            ${expenses.slice(0, 30).map(e => {
+                            ${pageExpenses.map(e => {
                                 const cat = categories.find(c => c.id === e.category_id);
                                 return `
                                 <tr class="hover:bg-slate-800/30">
@@ -137,35 +142,45 @@ const ExpensesPage = {
                                     </td>
                                 </tr>`;
                             }).join('')}
-                            ${expenses.length === 0 ? `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-500">지출 내역이 없습니다.</td></tr>` : ''}
+                            ${pageExpenses.length === 0 ? `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-500">지출 내역이 없습니다.</td></tr>` : ''}
                         </tbody>
                     </table>
                 </div>
+                ${totalPages > 1 ? Pagination.render(this.page, totalPages, totalExp, this.pageSize, 'ep') : ''}
             </div>
         </div>`;
 
-        this.bindEvents(container, categories, expenses);
+        this.bindEvents(container, categories, expenses, totalPages);
     },
 
-    bindEvents(container, categories, expenses) {
-        // 엑셀 내보내기
+    bindEvents(container, categories, expenses, totalPages = 1) {
         document.getElementById('btn-export-expense').addEventListener('click', () => {
             ExcelExport.exportExpenses(expenses, categories);
         });
 
-        // 기간 필터
         PeriodFilter.bindEvents(container, 'ep', (type, from, to) => {
             this.periodType = type;
             this.customFrom = from;
             this.customTo = to;
+            this.page = 1;
             App.renderPage('expenses');
         });
 
-        // 관리자 지점 필터
         container.querySelectorAll('.ep-branch-filter').forEach(btn => {
             btn.addEventListener('click', () => {
                 this.filterBranch = btn.dataset.branch || null;
+                this.page = 1;
                 App.renderPage('expenses');
+            });
+        });
+
+        container.querySelectorAll('.pagin-btn[data-prefix="ep"]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const num = btn.dataset.pageNum;
+                if (num && !btn.classList.contains('cursor-not-allowed')) {
+                    this.page = parseInt(num, 10);
+                    App.renderPage('expenses');
+                }
             });
         });
 

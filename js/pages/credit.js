@@ -6,13 +6,14 @@ const CreditPage = {
     periodType: 'today',
     customFrom: null,
     customTo: null,
+    page: 1,
+    pageSize: 50,
 
     async render(container) {
         const staff = await DB.getAll('staff');
         const isAdmin = Auth.isAdmin();
         const range = PeriodFilter.getRange(this.periodType, this.customFrom, this.customTo);
 
-        // 지점 staff ID 목록 결정
         let staffIds = null;
         if (!isAdmin) {
             const staffId = await Auth.getStaffId();
@@ -24,41 +25,43 @@ const CreditPage = {
             staffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
         }
 
-        // DB 레벨에서 날짜+지점 필터 (staff_id 기준)
         let receivables = await DB.getFiltered('receivables', {
             dateField: 'date', from: range.from, to: range.to,
             staffIds, staffField: 'staff_id',
             orderField: 'date', orderAsc: false,
+            limit: 3000,
         });
-        // entered_by 기준 추가 조회 (staff_id와 다를 수 있음)
         if (staffIds) {
             const byEntered = await DB.getFiltered('receivables', {
                 dateField: 'date', from: range.from, to: range.to,
                 staffIds, staffField: 'entered_by',
                 orderField: 'date', orderAsc: false,
+                limit: 3000,
             });
             const existingIds = new Set(receivables.map(r => r.id));
             byEntered.forEach(r => { if (!existingIds.has(r.id)) receivables.push(r); });
             receivables.sort((a, b) => b.date.localeCompare(a.date));
         }
 
-        // 지점 목록
-        const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
-
-        if (this.filterStatus) {
-            if (this.filterStatus === 'unpaid') receivables = receivables.filter(r => r.status === 'unpaid');
-            else if (this.filterStatus === 'partial') receivables = receivables.filter(r => r.status === 'partial');
-            else if (this.filterStatus === 'paid') receivables = receivables.filter(r => r.status === 'paid');
-            else if (this.filterStatus === 'overdue') receivables = receivables.filter(r => r.status !== 'paid' && r.due_date && new Date(r.due_date) < new Date());
-        }
-
-        const payments = await DB.getAll('receivable_payments');
+        if (this.filterStatus === 'unpaid') receivables = receivables.filter(r => r.status === 'unpaid');
+        else if (this.filterStatus === 'partial') receivables = receivables.filter(r => r.status === 'partial');
+        else if (this.filterStatus === 'paid') receivables = receivables.filter(r => r.status === 'paid');
+        else if (this.filterStatus === 'overdue') receivables = receivables.filter(r => r.status !== 'paid' && r.due_date && new Date(r.due_date) < new Date());
 
         const totalOutstanding = receivables.filter(r => r.status !== 'paid').reduce((s, r) => s + (r.amount - (r.paid_amount || 0)), 0);
+
+        const payments = await DB.getFiltered('receivable_payments', {
+            dateField: 'paid_date', from: range.from, to: range.to, orderField: 'paid_date', orderAsc: false, limit: 5000,
+        });
+
         const totalCollected = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
         const delinquentCount = receivables.filter(r => r.status !== 'paid' && r.due_date && new Date(r.due_date) < new Date()).length;
 
-        // Pre-fetch staffId for template usage
+        const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
+        const totalRec = receivables.length;
+        const totalPages = Math.max(1, Math.ceil(totalRec / this.pageSize));
+        const pageRecs = receivables.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
+
         const currentStaffId = await Auth.getStaffId();
 
         container.innerHTML = `
@@ -138,7 +141,7 @@ const CreditPage = {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-800">
-                            ${receivables.map(r => {
+                            ${pageRecs.map(r => {
                                 const s = staff.find(st => st.id === r.staff_id);
                                 const isOverdue = r.status !== 'paid' && r.due_date && new Date(r.due_date) < new Date();
                                 const statusBadge = r.status === 'paid'
@@ -170,17 +173,18 @@ const CreditPage = {
                                     </td>
                                 </tr>`;
                             }).join('')}
-                            ${receivables.length === 0 ? `<tr><td colspan="7" class="px-6 py-16 text-center text-slate-500">외상 데이터가 없습니다.</td></tr>` : ''}
+                            ${pageRecs.length === 0 ? `<tr><td colspan="7" class="px-6 py-16 text-center text-slate-500">외상 데이터가 없습니다.</td></tr>` : ''}
                         </tbody>
                     </table>
                 </div>
+                ${totalPages > 1 ? Pagination.render(this.page, totalPages, totalRec, this.pageSize, 'cr') : ''}
             </div>
         </div>`;
 
-        this.bindEvents(container, staff, receivables, currentStaffId);
+        this.bindEvents(container, staff, receivables, currentStaffId, totalPages);
     },
 
-    bindEvents(container, staff, receivables, currentStaffId) {
+    bindEvents(container, staff, receivables, currentStaffId, totalPages = 1) {
         // 엑셀 내보내기
         document.getElementById('btn-export-credit').addEventListener('click', () => {
             ExcelExport.exportReceivables(receivables, staff);
@@ -191,6 +195,7 @@ const CreditPage = {
             this.periodType = type;
             this.customFrom = from;
             this.customTo = to;
+            this.page = 1;
             App.renderPage('credit');
         });
 
@@ -198,6 +203,7 @@ const CreditPage = {
         container.querySelectorAll('.cr-branch-filter').forEach(btn => {
             btn.addEventListener('click', () => {
                 this.filterBranch = btn.dataset.branch || null;
+                this.page = 1;
                 App.renderPage('credit');
             });
         });
@@ -206,7 +212,19 @@ const CreditPage = {
         container.querySelectorAll('.status-filter').forEach(btn => {
             btn.addEventListener('click', () => {
                 this.filterStatus = btn.dataset.filterStatus || null;
+                this.page = 1;
                 App.renderPage('credit');
+            });
+        });
+
+        // 페이지네이션
+        container.querySelectorAll('.pagin-btn[data-prefix="cr"]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const num = btn.dataset.pageNum;
+                if (num && !btn.classList.contains('cursor-not-allowed')) {
+                    this.page = parseInt(num, 10);
+                    App.renderPage('credit');
+                }
             });
         });
 
@@ -319,18 +337,17 @@ const CreditPage = {
             btn.addEventListener('click', async () => {
                 const rec = await DB.getById('receivables', btn.dataset.history);
                 if (!rec) return;
-                const recPayments = (await DB.getAll('receivable_payments')).filter(p => p.receivable_id === rec.id).sort((a, b) => (b.paid_date || '').localeCompare(a.paid_date || ''));
+                const recPayments = (await DB.getWhereIn('receivable_payments', 'receivable_id', [rec.id])).sort((a, b) => (b.paid_date || '').localeCompare(a.paid_date || ''));
                 const methodLabel = m => m === 'transfer' ? '이체' : m === 'card' ? '카드' : m === 'cash' ? '현금' : m || '-';
                 const remaining = rec.amount - (rec.paid_amount || 0);
                 const allStaff = await DB.getAll('staff');
                 const staffObj = allStaff.find(s => s.id === rec.staff_id);
 
                 let sale = rec.daily_sales_id ? await DB.getById('daily_sales', rec.daily_sales_id) : null;
-                if (!sale) {
-                    const allSales = await DB.getAll('daily_sales');
-                    sale = allSales.find(s =>
-                        s.date === rec.date && s.credit_items &&
-                        s.credit_items.some(c => c.customer === rec.customer && Math.abs(c.amount - rec.amount) < 100)
+                if (!sale && rec.date) {
+                    const daySales = await DB.getFiltered('daily_sales', { from: rec.date, to: rec.date, limit: 200 });
+                    sale = daySales.find(s =>
+                        s.credit_items && s.credit_items.some(c => c.customer === rec.customer && Math.abs(c.amount - rec.amount) < 100)
                     );
                 }
 

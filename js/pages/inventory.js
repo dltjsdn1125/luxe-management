@@ -331,13 +331,15 @@ const InventoryPage = {
         const dlCount = { color: '#fff', font: { size: 10, weight: 'bold' }, formatter: v => v > 0 ? v : '', anchor: 'end', align: 'end', offset: -2 };
         const dlWon = { color: '#fff', font: { size: 10, weight: 'bold' }, formatter: v => v > 0 ? (v/10000).toFixed(0) + '만' : '', anchor: 'end', align: 'end', offset: -2 };
 
-        // 1. 월별 발주량 vs 판매량 (지점 필터 적용)
-        let allOrders = await DB.getAll('liquor_orders');
-        let allSales = await DB.getAll('daily_sales');
-        if (chartBranchStaffIds && chartBranchStaffIds.length) {
-            allOrders = allOrders.filter(o => chartBranchStaffIds.includes(o.entered_by));
-            allSales = allSales.filter(s => chartBranchStaffIds.includes(s.entered_by));
-        }
+        // 1. 월별 발주량 vs 판매량 - 최근 6개월만 DB 레벨 쿼리
+        const d0 = new Date(); d0.setMonth(d0.getMonth() - 5);
+        const chartFrom = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, '0')}-01`;
+        const chartTo = Format.today();
+        const chartStaffIds = (chartBranchStaffIds && chartBranchStaffIds.length > 0) ? chartBranchStaffIds : null;
+        const [allOrders, allSales] = await Promise.all([
+            DB.getFiltered('liquor_orders', { from: chartFrom, to: chartTo, staffIds: chartStaffIds, staffField: 'entered_by', limit: 5000 }),
+            DB.getFiltered('daily_sales', { from: chartFrom, to: chartTo, staffIds: chartStaffIds, staffField: 'entered_by', limit: 5000 }),
+        ]);
         const months = {};
         const last6 = [];
         for (let i = 5; i >= 0; i--) {

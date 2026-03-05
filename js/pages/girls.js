@@ -605,8 +605,7 @@ const GirlsPage = {
             btn.addEventListener('click', async () => {
                 const g = await DB.getById('girls', btn.dataset.girlDetail);
                 if (!g) return;
-                const allGirlPayments = await DB.getAll('girl_payments');
-                const gPayments = allGirlPayments.filter(p => p.girl_id === g.id).sort((a, b) => b.date.localeCompare(a.date));
+                const gPayments = (await DB.getWhereIn('girl_payments', 'girl_id', [g.id])).sort((a, b) => b.date.localeCompare(a.date));
                 const html = gPayments.length > 0
                     ? `<div class="max-h-80 overflow-y-auto custom-scrollbar space-y-2">${gPayments.map(p => {
                         const typeLabel = p.type === 'standby' ? '대기비' : p.type === 'full_attendance' ? '만근비' : '이벤트';

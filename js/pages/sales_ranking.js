@@ -34,17 +34,22 @@ const SalesRankingPage = {
             this.selectedBranch = branchList[0].name;
         }
 
-        // 기간 필터
         const range = PeriodFilter.getRange(this.periodType, this.customFrom, this.customTo);
-        const periodSales = PeriodFilter.filterByDate(allSales, 'date', range.from, range.to);
-
-        // 지점 필터
         let branchStaff = staff;
         if (this.selectedBranch) {
             branchStaff = staff.filter(s => s.branch_name === this.selectedBranch);
         }
         const bsIds = branchStaff.map(s => s.id);
-        const filteredSales = periodSales.filter(s => bsIds.includes(s.entered_by));
+        const staffIds = bsIds.length > 0 ? bsIds : null;
+
+        // DB 레벨에서 날짜+지점 필터 (2000건 제한 우회)
+        const filteredSales = await DB.getFiltered('daily_sales', {
+            from: range.from, to: range.to, staffIds, staffField: 'entered_by', orderField: 'date', orderAsc: true, limit: 5000,
+        });
+        const filteredSaleIds = new Set(filteredSales.map(s => s.id));
+        const allRooms = filteredSaleIds.size > 0
+            ? (await DB.getWhereIn('daily_sale_rooms', 'daily_sales_id', [...filteredSaleIds])) || []
+            : [];
 
         // 직원별 매출 집계
         const staffStats = {};
@@ -70,9 +75,8 @@ const SalesRankingPage = {
             if (rev > staffStats[sid].maxSingleDay) staffStats[sid].maxSingleDay = rev;
         });
 
-        // 룸별 최고 매출 집계
-        const filteredSaleIds = new Set(filteredSales.map(s => s.id));
-        allRooms.filter(r => filteredSaleIds.has(r.daily_sales_id)).forEach(room => {
+        // 룸별 최고 매출 집계 (allRooms는 이미 해당 기간/지점 정산의 룸만 포함)
+        allRooms.forEach(room => {
             const sale = filteredSales.find(s => s.id === room.daily_sales_id);
             if (!sale) return;
             const sid = sale.entered_by;

@@ -47,6 +47,68 @@ const DB = {
         return data || [];
     },
 
+    // 페이지네이션: { data, total, page, pageSize, totalPages }
+    // opts: statusFilter { column, value }
+    async getFilteredPaginated(table, opts = {}) {
+        const {
+            dateField = 'date',
+            from,
+            to,
+            staffIds,
+            staffField = 'entered_by',
+            orderField = 'date',
+            orderAsc = false,
+            page = 1,
+            pageSize = 50,
+            statusFilter,
+        } = opts;
+
+        let q = this._sb()
+            .from(table)
+            .select('*', { count: 'exact', head: false })
+            .eq('_deleted', false);
+
+        if (from) q = q.gte(dateField, from);
+        if (to)   q = q.lte(dateField, to);
+        if (opts.orFilter) q = q.or(opts.orFilter);
+        else if (staffIds && staffIds.length > 0) q = q.in(staffField, staffIds);
+        if (statusFilter && statusFilter.column && statusFilter.value) q = q.eq(statusFilter.column, statusFilter.value);
+
+        q = q.order(orderField, { ascending: orderAsc });
+
+        const fromRow = (page - 1) * pageSize;
+        q = q.range(fromRow, fromRow + pageSize - 1);
+
+        const { data, error, count } = await q;
+        if (error) { console.error(`DB.getFilteredPaginated(${table}):`, error); return { data: [], total: 0, page: 1, pageSize, totalPages: 0 }; }
+        const total = count ?? 0;
+        return {
+            data: data || [],
+            total,
+            page,
+            pageSize,
+            totalPages: Math.max(1, Math.ceil(total / pageSize)),
+        };
+    },
+
+    async getWhereIn(table, column, values) {
+        if (!values || values.length === 0) return [];
+        const arr = Array.isArray(values) ? values : [values];
+        const CHUNK = 150;
+        const out = [];
+        for (let i = 0; i < arr.length; i += CHUNK) {
+            const chunk = arr.slice(i, i + CHUNK);
+            const { data, error } = await this._sb()
+                .from(table)
+                .select('*')
+                .eq('_deleted', false)
+                .in(column, chunk);
+            if (error) { console.error(`DB.getWhereIn(${table}, ${column}):`, error); return out; }
+            if (data) out.push(...data);
+        }
+        return out;
+    },
+
     async getById(table, id) {
         const { data, error } = await this._sb()
             .from(table)
@@ -222,19 +284,33 @@ const DB = {
     },
 
     async getSaleRooms(saleId) {
-        const rooms = await this.query('daily_sale_rooms', r => r.daily_sales_id === saleId);
+        const { data: rooms } = await this._sb()
+            .from('daily_sale_rooms')
+            .select('*')
+            .eq('_deleted', false)
+            .eq('daily_sales_id', saleId);
         const result = [];
-        for (const r of rooms) {
-            const girls = await this.query('daily_sale_room_girls', g => g.room_id === r.id);
-            const liquor_items = await this.query('daily_sale_room_liquors', l => l.room_id === r.id);
-            result.push({ ...r, girls, liquor_items });
+        for (const r of rooms || []) {
+            const [girlsRes, liquorRes] = await Promise.all([
+                this._sb().from('daily_sale_room_girls').select('*').eq('_deleted', false).eq('room_id', r.id),
+                this._sb().from('daily_sale_room_liquors').select('*').eq('_deleted', false).eq('room_id', r.id)
+            ]);
+            result.push({
+                ...r,
+                girls: girlsRes.data || [],
+                liquor_items: liquorRes.data || []
+            });
         }
         return result;
     },
 
     async getSaleRoomCount(saleId) {
-        const rooms = await this.query('daily_sale_rooms', r => r.daily_sales_id === saleId);
-        return rooms.length;
+        const { count } = await this._sb()
+            .from('daily_sale_rooms')
+            .select('*', { count: 'exact', head: true })
+            .eq('_deleted', false)
+            .eq('daily_sales_id', saleId);
+        return count ?? 0;
     },
 
     // ═══ 지점별 설정 헬퍼 ═══

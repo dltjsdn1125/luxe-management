@@ -45,22 +45,23 @@ const MonthlySettlementPage = {
         const periodFrom = `${prevYr}-${String(prevMo).padStart(2, '0')}-${String(settleStartDay).padStart(2, '0')}`;
         const periodTo = `${yr}-${String(mo).padStart(2, '0')}-${String(settleEndDay).padStart(2, '0')}`;
 
-        // 데이터 로드
-        const allSales = await DB.getAll('daily_sales');
-        const allReceivables = await DB.getAll('receivables');
-
         // 지점 필터 적용
         let branchStaff = staff;
         if (this.selectedBranch) {
             branchStaff = staff.filter(s => s.branch_name === this.selectedBranch);
         }
         const bsIds = branchStaff.map(s => s.id);
+        const staffIds = bsIds.length > 0 ? bsIds : null;
 
-        // 기간 내 정산 데이터
-        const periodSales = allSales.filter(s => {
-            if (!s.date) return false;
-            return s.date >= periodFrom && s.date <= periodTo && bsIds.includes(s.entered_by);
-        });
+        // DB 레벨에서 날짜+지점 필터 (2000건 제한 우회)
+        const [periodSales, periodReceivablesRaw] = await Promise.all([
+            DB.getFiltered('daily_sales', { from: periodFrom, to: periodTo, staffIds, staffField: 'entered_by', orderField: 'date', orderAsc: true }),
+            DB.getFiltered('receivables', { from: periodFrom, to: periodTo, staffIds, staffField: 'staff_id', orderField: 'date', orderAsc: true }),
+        ]);
+        const recByEntered = staffIds ? await DB.getFiltered('receivables', { from: periodFrom, to: periodTo, staffIds, staffField: 'entered_by', orderField: 'date', orderAsc: true }) : [];
+        const allReceivables = periodReceivablesRaw.slice();
+        const existRecIds = new Set(allReceivables.map(r => r.id));
+        recByEntered.forEach(r => { if (!existRecIds.has(r.id)) allReceivables.push(r); });
 
         // 영업사장/실장 필터
         const presidents = branchStaff.filter(s => s.role === 'president');
@@ -96,12 +97,8 @@ const MonthlySettlementPage = {
             staffStats[sid].days += 1;
         });
 
-        // 외상 집계
-        const periodReceivables = allReceivables.filter(r => {
-            if (!r.date) return false;
-            return r.date >= periodFrom && r.date <= periodTo && bsIds.includes(r.staff_id || r.entered_by);
-        });
-        periodReceivables.forEach(r => {
+        // 외상 집계 (getFiltered로 이미 기간+지점 필터됨)
+        allReceivables.forEach(r => {
             const sid = r.staff_id || r.entered_by;
             if (!staffStats[sid]) return;
             const unpaid = r.amount - (r.paid_amount || 0);

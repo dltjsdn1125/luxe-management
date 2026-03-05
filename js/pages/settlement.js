@@ -7,6 +7,8 @@ const SettlementPage = {
     customFrom: null,
     customTo: null,
     roomCounter: 0,
+    page: 1,
+    pageSize: 50,
 
     async _getTcUnit(branchId) {
         if (!branchId) {
@@ -63,12 +65,16 @@ const SettlementPage = {
     },
 
     async renderList(container) {
-        const settlements = await this.getSettlements();
+        const allSettlements = await this.getSettlements();
         const staff = await DB.getAll('staff');
         const isAdmin = Auth.isAdmin();
         const branchNames = [...new Set(staff.map(s => s.branch_name).filter(Boolean))].sort();
 
-        // ── 전체 합계 ──
+        const totalSet = allSettlements.length;
+        const totalPages = Math.max(1, Math.ceil(totalSet / this.pageSize));
+        const settlements = allSettlements.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
+
+        // ── 전체 합계 (현재 페이지) ──
         const sumRevenue   = settlements.reduce((s, r) => s + (Number(r.total_revenue)    || 0), 0);
         const sumWari      = settlements.reduce((s, r) => s + (Number(r.total_wari)       || 0), 0);
         const sumGirlPay   = settlements.reduce((s, r) => s + (Number(r.total_girl_pay)   || 0), 0);
@@ -284,6 +290,7 @@ const SettlementPage = {
                         </tbody>
                     </table>
                 </div>
+                ${isAdmin && totalPages > 1 ? Pagination.render(this.page, totalPages, totalSet, this.pageSize, 'st') : ''}
             </div>
 
             <!-- 직원별 정산 상세 내역 (아코디언 클릭 시 표시) -->
@@ -346,6 +353,7 @@ const SettlementPage = {
                         </tbody>
                     </table>
                 </div>
+                ${!isAdmin && totalPages > 1 ? Pagination.render(this.page, totalPages, totalSet, this.pageSize, 'st') : ''}
             </div>` : ''}
         </div>`;
 
@@ -358,14 +366,25 @@ const SettlementPage = {
         });
         PeriodFilter.bindEvents(container, 'st', (type, from, to) => {
             this.periodType = type; this.customFrom = from; this.customTo = to;
+            this.page = 1;
             this.mode = 'list'; App.renderPage('settlement');
         });
 
-        // 지점 필터 탭
         container.querySelectorAll('.st-branch-filter').forEach(btn => {
             btn.addEventListener('click', () => {
                 this.filterBranch = btn.dataset.branch || null;
+                this.page = 1;
                 this.mode = 'list'; App.renderPage('settlement');
+            });
+        });
+
+        container.querySelectorAll('.pagin-btn[data-prefix="st"]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const num = btn.dataset.pageNum;
+                if (num && !btn.classList.contains('cursor-not-allowed')) {
+                    this.page = parseInt(num, 10);
+                    App.renderPage('settlement');
+                }
             });
         });
 
@@ -1311,7 +1330,10 @@ const SettlementPage = {
         const saleRooms = await DB.getSaleRooms(sale.id);
         const hasRoomData = saleRooms.length > 0;
 
-        const girlPayments = (await DB.getAll('girl_payments')).filter(p => p.date === sale.date && (p.entered_by === sale.entered_by || p.staff_id === sale.entered_by));
+        const { data: girlPaymentsData } = sale.entered_by
+            ? await window._supabase.from('girl_payments').select('*').eq('_deleted', false).eq('date', sale.date).or(`entered_by.eq.${sale.entered_by},staff_id.eq.${sale.entered_by}`)
+            : { data: [] };
+        const girlPayments = girlPaymentsData || [];
         const girls = await DB.getAll('girls');
         const girlExpenseTotal = girlPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
