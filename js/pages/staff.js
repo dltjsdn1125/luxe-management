@@ -417,10 +417,11 @@ const StaffPage = {
 
         const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-        // 날짜별 출근 맵: girlId -> Set of day numbers
+        // 날짜별 출근 맵: girlId -> Set of day numbers (standby 타입만)
         const attendanceMap = {};
         girls.forEach(g => { attendanceMap[g.id] = new Set(); });
         payments.forEach(p => {
+            if (p.type !== 'standby') return;
             if (!p.date || !p.date.startsWith(month)) return;
             const day = parseInt(p.date.split('-')[2]);
             if (attendanceMap[p.girl_id]) attendanceMap[p.girl_id].add(day);
@@ -563,7 +564,6 @@ const StaffPage = {
                 const standbyFee = girl.standby_fee || 150000;
 
                 if (worked) {
-                    // 해당 날짜+아가씨 레코드만 직접 쿼리 (getAll 1000건 제한 우회)
                     const { data: payData } = await window._supabase
                         .from('girl_payments')
                         .select('id')
@@ -576,6 +576,8 @@ const StaffPage = {
                     if (existing) {
                         await DB.delete('girl_payments', existing.id);
                         App.toast(girlName + ' ' + date + ' 출근 취소', 'success');
+                    } else {
+                        App.toast('취소할 출근 기록을 찾을 수 없습니다.', 'error');
                     }
                 } else {
                     await DB.insert('girl_payments', {
