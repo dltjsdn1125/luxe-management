@@ -218,23 +218,23 @@ const DashboardPage = {
                             bgClass = 'bg-emerald-500/5 border border-emerald-500/20';
                             avatarClass = 'bg-emerald-500/20 text-emerald-400';
                             labelClass = 'text-white';
-                            statusHtml = `<p class="text-[10px] text-emerald-400 font-bold flex items-center gap-0.5"><span class="material-symbols-outlined text-[10px]">check_circle</span> 마감완료${bc.revenue ? ' · ' + Format.number(bc.revenue) : ''}</p>`;
+                            statusHtml = `<p class="text-[10px] text-emerald-400 font-bold flex items-center gap-0.5 min-w-0"><span class="material-symbols-outlined text-[10px] shrink-0">check_circle</span><span class="closure-revenue">마감 ${bc.revenue ? Format.number(bc.revenue) : ''}</span></p>`;
                         } else if (bc.hasData) {
                             bgClass = 'bg-blue-500/5 border border-blue-500/20';
                             avatarClass = 'bg-blue-500/20 text-blue-400';
                             labelClass = 'text-white';
-                            statusHtml = `<p class="text-[10px] text-blue-400 font-bold flex items-center gap-0.5"><span class="material-symbols-outlined text-[10px] animate-pulse">edit</span> 입력중${bc.revenue ? ' · ' + Format.number(bc.revenue) : ''}</p>`;
+                            statusHtml = `<p class="text-[10px] text-blue-400 font-bold flex items-center gap-0.5 min-w-0"><span class="material-symbols-outlined text-[10px] animate-pulse shrink-0">edit</span><span class="closure-revenue">입력중 ${bc.revenue ? Format.number(bc.revenue) : ''}</span></p>`;
                         } else {
                             bgClass = 'bg-slate-800/50 border border-slate-700/50';
                             avatarClass = 'bg-slate-700 text-slate-500';
                             labelClass = 'text-slate-400';
-                            statusHtml = `<p class="text-[10px] text-amber-300 font-bold flex items-center gap-0.5"><span class="material-symbols-outlined text-[10px]">schedule</span> 미마감</p>`;
+                            statusHtml = `<p class="text-[10px] text-amber-300 font-bold flex items-center gap-0.5"><span class="material-symbols-outlined text-[10px] shrink-0">schedule</span> 미마감</p>`;
                         }
-                        return `<div class="flex items-center gap-2 p-2.5 rounded-lg ${bgClass}">
+                        return `<div class="flex items-center gap-2 p-2.5 rounded-lg min-w-0 ${bgClass}">
                             <div class="h-7 w-7 rounded-lg ${avatarClass} text-[10px] flex items-center justify-center font-bold shrink-0">
                                 <span class="material-symbols-outlined text-sm">store</span>
                             </div>
-                            <div class="min-w-0">
+                            <div class="min-w-0 overflow-hidden">
                                 <p class="text-xs font-bold ${labelClass} truncate">${bn}</p>
                                 ${statusHtml}
                             </div>
@@ -256,37 +256,37 @@ const DashboardPage = {
 
             <!-- 요약 카드 -->
             <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
-                <div class="bg-slate-900 p-4 md:p-5 rounded-xl border border-slate-800">
-                    <div class="flex justify-between items-start mb-2"><div class="p-2 bg-emerald-500/10 rounded-lg text-emerald-500"><span class="material-symbols-outlined text-lg">payments</span></div></div>
-                    <p class="text-slate-500 text-[10px] md:text-xs uppercase tracking-wider font-semibold">총 매출</p>
-                    <h3 class="text-lg md:text-xl font-bold mt-1">${Format.won(totalRevenue)}</h3>
+                <div class="bg-slate-900 p-3 md:p-5 rounded-xl border border-slate-800 min-w-0">
+                    <div class="flex justify-between items-start mb-2"><div class="p-1.5 md:p-2 bg-emerald-500/10 rounded-lg text-emerald-500"><span class="material-symbols-outlined text-base md:text-lg">payments</span></div></div>
+                    <p class="text-slate-500 text-[10px] uppercase tracking-wider font-semibold truncate">총 매출</p>
+                    <h3 class="stat-value mt-1">${Format.won(totalRevenue)}</h3>
                     <p class="text-[10px] text-slate-500 mt-1">${allSales.length}건 정산</p>
                 </div>
-                <div class="bg-slate-900 p-4 md:p-5 rounded-xl border border-slate-800">
-                    <div class="flex justify-between items-start mb-2"><div class="p-2 bg-red-300/10 rounded-lg text-red-300"><span class="material-symbols-outlined text-lg">remove_circle</span></div></div>
-                    <p class="text-slate-500 text-[10px] md:text-xs uppercase tracking-wider font-semibold">총 차감</p>
-                    <h3 class="text-lg md:text-xl font-bold mt-1 text-red-300">${Format.won(totalDeductions)}</h3>
+                <div class="bg-slate-900 p-3 md:p-5 rounded-xl border border-slate-800 min-w-0">
+                    <div class="flex justify-between items-start mb-2"><div class="p-1.5 md:p-2 bg-red-300/10 rounded-lg text-red-300"><span class="material-symbols-outlined text-base md:text-lg">remove_circle</span></div></div>
+                    <p class="text-slate-500 text-[10px] uppercase tracking-wider font-semibold truncate">총 차감</p>
+                    <h3 class="stat-value mt-1 text-red-300">${Format.won(totalDeductions)}</h3>
                     <div class="text-[10px] text-slate-500 mt-1 space-y-0.5">
-                        <p>와리 ${Format.number(totalWari)} · 아가씨 ${Format.number(totalGirlPay)}</p>
-                        <p>지출 ${Format.number(totalExpense + totalDailyExpense)}</p>
+                        <p class="truncate">와리 ${Format.number(totalWari)}</p>
+                        <p class="truncate">아가씨 ${Format.number(totalGirlPay)}</p>
                     </div>
                 </div>
-                <div class="bg-slate-900 p-4 md:p-5 rounded-xl border ${(totalRevenue - totalDeductions) >= 0 ? 'border-blue-500/30' : 'border-red-500/30'}">
-                    <div class="flex justify-between items-start mb-2"><div class="p-2 bg-blue-500/10 rounded-lg text-blue-500"><span class="material-symbols-outlined text-lg">trending_up</span></div></div>
-                    <p class="text-slate-500 text-[10px] md:text-xs uppercase tracking-wider font-semibold">순이익</p>
-                    <h3 class="text-lg md:text-xl font-bold mt-1 ${(totalRevenue - totalDeductions) >= 0 ? 'text-blue-400' : 'text-red-300'}">${Format.won(totalRevenue - totalDeductions)}</h3>
-                    <p class="text-[10px] ${(totalRevenue - totalDeductions) >= 0 ? 'text-emerald-400' : 'text-red-300'} mt-1">이익률 ${totalRevenue > 0 ? Math.round((totalRevenue - totalDeductions) / totalRevenue * 100) : 0}%</p>
+                <div class="bg-slate-900 p-3 md:p-5 rounded-xl border min-w-0 ${(totalRevenue - totalDeductions) >= 0 ? 'border-blue-500/30' : 'border-red-500/30'}">
+                    <div class="flex justify-between items-start mb-2"><div class="p-1.5 md:p-2 bg-blue-500/10 rounded-lg text-blue-500"><span class="material-symbols-outlined text-base md:text-lg">trending_up</span></div></div>
+                    <p class="text-slate-500 text-[10px] uppercase tracking-wider font-semibold truncate">순이익</p>
+                    <h3 class="stat-value mt-1 ${(totalRevenue - totalDeductions) >= 0 ? 'text-blue-400' : 'text-red-300'}">${Format.won(totalRevenue - totalDeductions)}</h3>
+                    <p class="text-[10px] mt-1 truncate ${(totalRevenue - totalDeductions) >= 0 ? 'text-emerald-400' : 'text-red-300'}">이익률 ${totalRevenue > 0 ? Math.round((totalRevenue - totalDeductions) / totalRevenue * 100) : 0}%</p>
                 </div>
-                <div class="bg-slate-900 p-4 md:p-5 rounded-xl border border-slate-800">
-                    <div class="flex justify-between items-start mb-2"><div class="p-2 bg-amber-300/10 rounded-lg text-amber-300"><span class="material-symbols-outlined text-lg">credit_card</span></div></div>
-                    <p class="text-slate-500 text-[10px] md:text-xs uppercase tracking-wider font-semibold">외상 잔액</p>
-                    <h3 class="text-lg md:text-xl font-bold mt-1 text-amber-300">${Format.won(totalReceivable)}</h3>
+                <div class="bg-slate-900 p-3 md:p-5 rounded-xl border border-slate-800 min-w-0">
+                    <div class="flex justify-between items-start mb-2"><div class="p-1.5 md:p-2 bg-amber-300/10 rounded-lg text-amber-300"><span class="material-symbols-outlined text-base md:text-lg">credit_card</span></div></div>
+                    <p class="text-slate-500 text-[10px] uppercase tracking-wider font-semibold truncate">외상 잔액</p>
+                    <h3 class="stat-value mt-1 text-amber-300">${Format.won(totalReceivable)}</h3>
                 </div>
-                <div class="bg-slate-900 p-4 md:p-5 rounded-xl border border-slate-800">
-                    <div class="flex justify-between items-start mb-2"><div class="p-2 bg-yellow-300/10 rounded-lg text-yellow-300"><span class="material-symbols-outlined text-lg">rewarded_ads</span></div></div>
-                    <p class="text-slate-500 text-[10px] md:text-xs uppercase tracking-wider font-semibold">와리 총액</p>
-                    <h3 class="text-lg md:text-xl font-bold mt-1">${Format.won(totalWari)}</h3>
-                    <p class="text-[10px] text-slate-500 mt-1">직원 + 아가씨 인센티브</p>
+                <div class="bg-slate-900 p-3 md:p-5 rounded-xl border border-slate-800 min-w-0">
+                    <div class="flex justify-between items-start mb-2"><div class="p-1.5 md:p-2 bg-yellow-300/10 rounded-lg text-yellow-300"><span class="material-symbols-outlined text-base md:text-lg">rewarded_ads</span></div></div>
+                    <p class="text-slate-500 text-[10px] uppercase tracking-wider font-semibold truncate">와리 총액</p>
+                    <h3 class="stat-value mt-1">${Format.won(totalWari)}</h3>
+                    <p class="text-[10px] text-slate-500 mt-1 truncate">직원+아가씨 인센티브</p>
                 </div>
             </div>
 

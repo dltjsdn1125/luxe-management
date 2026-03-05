@@ -238,3 +238,30 @@ table {
         font-size: 0.8125rem; /* 13px */
     }
 }
+
+/* ── 반응형 수치 폰트 (카드 내 금액/숫자가 카드 밖으로 넘치지 않도록) ── */
+.stat-value {
+    font-size: clamp(0.75rem, 3.5vw, 1.25rem); /* 12px ~ 20px, 뷰포트 너비에 따라 자동 */
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 100%;
+}
+/* 모바일(2열 그리드)에서 더 작게 */
+@media (max-width: 480px) {
+    .stat-value {
+        font-size: clamp(0.65rem, 4vw, 0.9rem);
+    }
+}
+/* 마감현황 카드 내 금액 텍스트 */
+.closure-revenue {
+    font-size: clamp(0.6rem, 2.8vw, 0.75rem);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    max-width: 100%;
+}
