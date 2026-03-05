@@ -318,7 +318,7 @@ const MonthlySettlementPage = {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-800">
-                            ${periodReceivables.length > 0 ? periodReceivables.sort((a, b) => b.date.localeCompare(a.date)).map(r => {
+                            ${allReceivables.length > 0 ? allReceivables.sort((a, b) => b.date.localeCompare(a.date)).map(r => {
                                 const isPaid = r.status === 'paid';
                                 const isPartial = r.status === 'partial';
                                 const unpaid = r.amount - (r.paid_amount || 0);
