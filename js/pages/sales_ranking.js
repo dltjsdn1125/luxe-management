@@ -28,10 +28,6 @@ const SalesRankingPage = {
         });
         const branchList = [...branchMap.values()];
 
-        if (!this.selectedBranch && branchList.length > 0) {
-            this.selectedBranch = branchList[0].name;
-        }
-
         const range = PeriodFilter.getRange(this.periodType, this.customFrom, this.customTo);
         let branchStaff = staff;
         if (this.selectedBranch) {

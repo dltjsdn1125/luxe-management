@@ -30,10 +30,6 @@ const MonthlySettlementPage = {
         });
         const branchList = [...branchMap.values()];
 
-        if (!this.selectedBranch && branchList.length > 0) {
-            this.selectedBranch = branchList[0].name;
-        }
-
         // 정산 설정 로드
         const settleStartDay = parseInt(await DB.getBranchSetting('monthly_settle_start_day', null) || '11');
         const settleEndDay = parseInt(await DB.getBranchSetting('monthly_settle_end_day', null) || '10');
