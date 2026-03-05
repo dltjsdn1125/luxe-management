@@ -77,21 +77,35 @@ const DashboardPage = {
         const totalReceivable = allReceivables.filter(r => r.status !== 'paid').reduce((s, r) => s + (r.amount - (r.paid_amount || 0)), 0);
         const totalDeductions = totalWari + totalGirlPay + totalDailyExpense + totalExpense;
 
-        const staffStats = staff.map(s => {
-            const mySales = allSales.filter(d => d.entered_by === s.id);
-            // 외상: staff_id 또는 entered_by 둘 다로 매칭 (정산 입력 시 staff_id가 빠질 수 있음)
-            const myReceivables = allReceivables.filter(r => (r.staff_id === s.id || r.entered_by === s.id) && r.status !== 'paid');
-            return {
-                ...s,
-                salesCount: mySales.length,
-                revenue: mySales.reduce((sum, d) => sum + (Number(d.total_revenue) || 0), 0),
-                wari: mySales.reduce((sum, d) => sum + (Number(d.total_wari) || 0), 0),
-                girlPay: mySales.reduce((sum, d) => sum + (Number(d.total_girl_pay) || 0), 0),
-                dailyExpense: mySales.reduce((sum, d) => sum + (Number(d.total_expenses) || 0), 0),
-                receivable: myReceivables.reduce((sum, r) => sum + (r.amount - (r.paid_amount || 0)), 0),
-                receivableCount: myReceivables.length
-            };
+        // ── 지점별 집계 (staffStats = 지점 단위) ──
+        const branchStatsMap = {};
+        staff.forEach(s => {
+            const bn = s.branch_name || s.name;
+            if (!branchStatsMap[bn]) {
+                branchStatsMap[bn] = {
+                    id: bn, name: bn, branch_name: bn,
+                    salesCount: 0, revenue: 0, wari: 0, girlPay: 0,
+                    dailyExpense: 0, receivable: 0, receivableCount: 0,
+                    expense: 0, totalDeductions: 0, netProfit: 0,
+                    staffIds: []
+                };
+            }
+            branchStatsMap[bn].staffIds.push(s.id);
         });
+        Object.values(branchStatsMap).forEach(bs => {
+            const bSales = allSales.filter(d => bs.staffIds.includes(d.entered_by));
+            const bReceivables = allReceivables.filter(r =>
+                (bs.staffIds.includes(r.staff_id) || bs.staffIds.includes(r.entered_by)) && r.status !== 'paid'
+            );
+            bs.salesCount   = bSales.length;
+            bs.revenue      = bSales.reduce((sum, d) => sum + (Number(d.total_revenue)  || 0), 0);
+            bs.wari         = bSales.reduce((sum, d) => sum + (Number(d.total_wari)     || 0), 0);
+            bs.girlPay      = bSales.reduce((sum, d) => sum + (Number(d.total_girl_pay) || 0), 0);
+            bs.dailyExpense = bSales.reduce((sum, d) => sum + (Number(d.total_expenses) || 0), 0);
+            bs.receivable   = bReceivables.reduce((sum, r) => sum + (r.amount - (r.paid_amount || 0)), 0);
+            bs.receivableCount = bReceivables.length;
+        });
+        const staffStats = Object.values(branchStatsMap).sort((a, b) => b.revenue - a.revenue);
 
         this._lastStaffStats = staffStats;
 
@@ -103,12 +117,12 @@ const DashboardPage = {
         }).slice(0, 8);
 
         const users = await DB.getAll('users');
-        const staffExpenses = {};
-        allExpenses.forEach(e => { const sid = e.entered_by || 'unknown'; staffExpenses[sid] = (staffExpenses[sid] || 0) + (Number(e.amount) || 0); });
-        staffStats.forEach(s => {
-            s.expense = staffExpenses[s.id] || 0;
-            s.totalDeductions = s.wari + s.girlPay + s.dailyExpense + s.expense;
-            s.netProfit = s.revenue - s.totalDeductions;
+        // 지점별 지출 집계
+        staffStats.forEach(bs => {
+            const bExpenses = allExpenses.filter(e => bs.staffIds.includes(e.entered_by));
+            bs.expense = bExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+            bs.totalDeductions = bs.wari + bs.girlPay + bs.dailyExpense + bs.expense;
+            bs.netProfit = bs.revenue - bs.totalDeductions;
         });
 
         // 매입/매출 데이터
@@ -144,17 +158,22 @@ const DashboardPage = {
 
         const todayStr = Format.today();
         const todaySales = allSalesRaw.filter(s => s.date === todayStr && s.entered_by);
-        const staffWithData = new Set(todaySales.map(s => s.entered_by));
-        // 마감 여부: 해당 직원의 오늘 정산이 모두 closed인 경우만 마감 완료
-        const staffClosed = new Set();
-        staff.forEach(s => {
-            const mySales = todaySales.filter(sale => sale.entered_by === s.id);
-            if (mySales.length > 0 && mySales.every(sale => !!sale.closed)) {
-                staffClosed.add(s.id);
-            }
+
+        // ── 지점별로 마감현황 집계 ──
+        const branchClosureMap = {};   // branchName → { revenue, closedCount, totalCount, hasAnyData }
+        // 지점 목록 수집 (staff.branch_name 기준)
+        const branchNames = [...new Set(staff.map(s => s.branch_name || s.name).filter(Boolean))];
+        branchNames.forEach(bn => {
+            const branchStaff = staff.filter(s => (s.branch_name || s.name) === bn);
+            const branchSales = todaySales.filter(sale => branchStaff.some(s => s.id === sale.entered_by));
+            const revenue = branchSales.reduce((sum, sale) => sum + (Number(sale.total_revenue) || 0), 0);
+            const closedSales = branchSales.filter(sale => !!sale.closed);
+            const hasData = branchSales.length > 0;
+            // 지점 마감: 오늘 정산이 1건 이상 있고 모두 closed
+            const isClosed = hasData && branchSales.every(sale => !!sale.closed);
+            branchClosureMap[bn] = { revenue, closedSales: closedSales.length, totalSales: branchSales.length, hasData, isClosed };
         });
-        const closedCount = staff.filter(s => staffClosed.has(s.id)).length;
-        // 전체 미마감 건수 (기간 내)
+        const closedBranchCount = Object.values(branchClosureMap).filter(b => b.isClosed).length;
         const unclosedTotal = allSales.filter(s => !s.closed).length;
 
         container.innerHTML = `
@@ -177,37 +196,34 @@ const DashboardPage = {
                 </div>
             </header>
 
-            <!-- 당일 마감 현황 -->
+            <!-- 당일 마감 현황 (지점별) -->
             <div class="bg-slate-900 rounded-xl border border-slate-800 p-4 mb-6">
                 <div class="flex items-center justify-between mb-3 flex-nowrap gap-1">
                     <div class="flex items-center gap-1 shrink-0">
-                        <span class="material-symbols-outlined ${closedCount === staff.length ? 'text-emerald-400' : 'text-amber-300'} text-base">task_alt</span>
+                        <span class="material-symbols-outlined ${closedBranchCount === branchNames.length ? 'text-emerald-400' : 'text-amber-300'} text-base">task_alt</span>
                         <span class="text-xs font-bold text-white">마감현황</span>
                         <span class="text-[10px] text-slate-500 font-mono hidden sm:inline">${todayStr}</span>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
                         <span class="text-[10px] text-slate-600 items-center gap-0.5 hidden sm:flex"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>자동갱신</span>
                         ${unclosedTotal > 0 ? `<span class="text-[10px] font-bold text-red-300 bg-red-500/10 px-1.5 py-0.5 rounded-full">${unclosedTotal}건</span>` : ''}
-                        <span class="text-[10px] font-bold ${closedCount === staff.length ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-300 bg-amber-300/10'} px-1.5 py-0.5 rounded-full">${closedCount}/${staff.length}</span>
+                        <span class="text-[10px] font-bold ${closedBranchCount === branchNames.length ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-300 bg-amber-300/10'} px-1.5 py-0.5 rounded-full">${closedBranchCount}/${branchNames.length}</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                    ${staff.map(s => {
-                        const hasClosed = staffClosed.has(s.id);
-                        const hasData = staffWithData.has(s.id);
-                        const mySales = todaySales.filter(sale => sale.entered_by === s.id);
-                        const myRev = mySales.reduce((sum, sale) => sum + (Number(sale.total_revenue) || 0), 0);
+                    ${branchNames.map(bn => {
+                        const bc = branchClosureMap[bn];
                         let bgClass, avatarClass, labelClass, statusHtml;
-                        if (hasClosed) {
+                        if (bc.isClosed) {
                             bgClass = 'bg-emerald-500/5 border border-emerald-500/20';
                             avatarClass = 'bg-emerald-500/20 text-emerald-400';
                             labelClass = 'text-white';
-                            statusHtml = `<p class="text-[10px] text-emerald-400 font-bold flex items-center gap-0.5"><span class="material-symbols-outlined text-[10px]">check_circle</span> 마감완료${myRev ? ' · ' + Format.number(myRev) : ''}</p>`;
-                        } else if (hasData) {
+                            statusHtml = `<p class="text-[10px] text-emerald-400 font-bold flex items-center gap-0.5"><span class="material-symbols-outlined text-[10px]">check_circle</span> 마감완료${bc.revenue ? ' · ' + Format.number(bc.revenue) : ''}</p>`;
+                        } else if (bc.hasData) {
                             bgClass = 'bg-blue-500/5 border border-blue-500/20';
                             avatarClass = 'bg-blue-500/20 text-blue-400';
                             labelClass = 'text-white';
-                            statusHtml = `<p class="text-[10px] text-blue-400 font-bold flex items-center gap-0.5"><span class="material-symbols-outlined text-[10px] animate-pulse">edit</span> 입력중${myRev ? ' · ' + Format.number(myRev) : ''}</p>`;
+                            statusHtml = `<p class="text-[10px] text-blue-400 font-bold flex items-center gap-0.5"><span class="material-symbols-outlined text-[10px] animate-pulse">edit</span> 입력중${bc.revenue ? ' · ' + Format.number(bc.revenue) : ''}</p>`;
                         } else {
                             bgClass = 'bg-slate-800/50 border border-slate-700/50';
                             avatarClass = 'bg-slate-700 text-slate-500';
@@ -215,9 +231,11 @@ const DashboardPage = {
                             statusHtml = `<p class="text-[10px] text-amber-300 font-bold flex items-center gap-0.5"><span class="material-symbols-outlined text-[10px]">schedule</span> 미마감</p>`;
                         }
                         return `<div class="flex items-center gap-2 p-2.5 rounded-lg ${bgClass}">
-                            <div class="h-7 w-7 rounded-full ${avatarClass} text-[10px] flex items-center justify-center font-bold shrink-0">${s.name.substring(0, 1)}</div>
+                            <div class="h-7 w-7 rounded-lg ${avatarClass} text-[10px] flex items-center justify-center font-bold shrink-0">
+                                <span class="material-symbols-outlined text-sm">store</span>
+                            </div>
                             <div class="min-w-0">
-                                <p class="text-xs font-bold ${labelClass} truncate">${s.branch_name || s.name}</p>
+                                <p class="text-xs font-bold ${labelClass} truncate">${bn}</p>
                                 ${statusHtml}
                             </div>
                         </div>`;
@@ -420,35 +438,34 @@ const DashboardPage = {
             </div>
 
             ${this.viewMode === 'total' ? `
-            <!-- 직원별 실적 테이블 -->
+            <!-- 지점별 실적 테이블 -->
             <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden mb-8">
                 <div class="p-4 md:p-6 border-b border-slate-800 flex justify-between items-center">
-                    <h4 class="font-bold text-lg flex items-center gap-2"><span class="material-symbols-outlined text-blue-500">groups</span> 직원별 실적 취합</h4>
-                    <button onclick="App.navigate('staff')" class="text-xs text-blue-500 font-bold hover:underline">상세 관리</button>
+                    <h4 class="font-bold text-lg flex items-center gap-2"><span class="material-symbols-outlined text-blue-500">store</span> 지점별 실적 취합</h4>
+                    <button onclick="App.navigate('staff')" class="text-xs text-blue-500 font-bold hover:underline">직원 관리</button>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm" style="white-space:nowrap;min-width:700px">
+                    <table class="w-full text-left text-sm" style="white-space:nowrap;min-width:600px">
                         <thead><tr class="bg-slate-800/50 text-slate-500 text-[10px] uppercase tracking-wider">
-                            <th class="px-3 md:px-6 py-3 font-semibold">직원</th><th class="px-3 md:px-6 py-3 font-semibold">지점</th>
-                            <th class="px-4 md:px-6 py-3 font-semibold">직책</th><th class="px-4 md:px-6 py-3 font-semibold">정산</th>
-                            <th class="px-4 md:px-6 py-3 font-semibold">매출</th><th class="px-4 md:px-6 py-3 font-semibold">와리</th>
+                            <th class="px-3 md:px-6 py-3 font-semibold">지점</th>
+                            <th class="px-4 md:px-6 py-3 font-semibold">직원수</th>
+                            <th class="px-4 md:px-6 py-3 font-semibold">정산건수</th>
+                            <th class="px-4 md:px-6 py-3 font-semibold">매출</th>
+                            <th class="px-4 md:px-6 py-3 font-semibold">와리</th>
                             <th class="px-4 md:px-6 py-3 font-semibold">순이익</th>
-                            <th class="px-4 md:px-6 py-3 font-semibold">외상</th><th class="px-4 md:px-6 py-3 font-semibold">계정</th>
+                            <th class="px-4 md:px-6 py-3 font-semibold">외상</th>
                         </tr></thead>
                         <tbody class="divide-y divide-slate-800">
                             ${staffStats.map(s => {
-                                const account = users.find(u => u.staff_id === s.id);
-                                const roleLabel = s.role === 'president' ? '영업사장' : s.role === 'manager' ? '실장' : '스탭';
+                                const branchStaffCount = staff.filter(st => (st.branch_name || st.name) === s.name).length;
                                 return `<tr class="hover:bg-slate-800/30">
-                                    <td class="px-4 md:px-6 py-4"><div class="flex items-center gap-2"><div class="h-8 w-8 rounded-full bg-blue-500/20 text-blue-400 text-xs flex items-center justify-center font-bold">${s.name.substring(0, 1)}</div><div><span class="font-bold text-white">${s.name}</span>${s.branch_name && s.role !== 'staff' ? '<span class="text-[10px] text-slate-500 ml-1">대표</span>' : ''}</div></div></td>
-                                    <td class="px-4 md:px-6 py-4"><span class="text-xs font-bold ${s.branch_name ? 'text-blue-400 bg-blue-500/10 px-2 py-1 rounded' : 'text-slate-600'}">${s.branch_name || '-'}</span></td>
-                                    <td class="px-4 md:px-6 py-4 text-slate-400">${roleLabel}</td>
-                                    <td class="px-4 md:px-6 py-4 text-white font-mono">${s.salesCount}</td>
+                                    <td class="px-4 md:px-6 py-4"><div class="flex items-center gap-2"><div class="h-8 w-8 rounded-lg bg-blue-500/20 text-blue-400 text-xs flex items-center justify-center font-bold"><span class="material-symbols-outlined text-sm">store</span></div><span class="font-bold text-white">${s.name}</span></div></td>
+                                    <td class="px-4 md:px-6 py-4 text-slate-400">${branchStaffCount}명</td>
+                                    <td class="px-4 md:px-6 py-4 text-white font-mono">${s.salesCount}건</td>
                                     <td class="px-4 md:px-6 py-4 text-white font-mono font-bold">${Format.won(s.revenue)}</td>
                                     <td class="px-4 md:px-6 py-4 font-mono gold-gradient-text font-bold">${Format.won(s.wari)}</td>
                                     <td class="px-4 md:px-6 py-4 font-mono font-bold ${s.netProfit >= 0 ? 'text-blue-400' : 'text-red-300'}">${Format.won(s.netProfit)}</td>
                                     <td class="px-4 md:px-6 py-4 ${s.receivable > 0 ? 'text-red-300' : 'text-slate-500'} font-mono">${Format.won(s.receivable)} ${s.receivableCount > 0 ? `(${s.receivableCount}건)` : ''}</td>
-                                    <td class="px-4 md:px-6 py-4">${account ? `<span class="text-xs font-mono text-slate-400 bg-slate-800 px-2 py-1 rounded">${account.username} / ${account.password}</span>` : '<span class="text-xs text-slate-600">없음</span>'}</td>
                                 </tr>`;
                             }).join('')}
                         </tbody>
@@ -502,19 +519,20 @@ const DashboardPage = {
                 ${staffStats.map((s, idx) => {
                     const colors = ['blue', 'emerald', 'purple', 'yellow', 'rose', 'cyan'];
                     const color = colors[idx % colors.length];
-                    const roleLabel = s.role === 'president' ? '영업사장' : s.role === 'manager' ? '실장' : '스탭';
-                    const mySales = allSales.filter(d => d.entered_by === s.id).sort((a, b) => b.date.localeCompare(a.date));
-                    const myReceivables = allReceivables.filter(r => (r.staff_id === s.id || r.entered_by === s.id) && r.status !== 'paid');
-                    const myExpenses = allExpenses.filter(e => e.entered_by === s.id);
+                    const mySales = allSales.filter(d => s.staffIds.includes(d.entered_by)).sort((a, b) => b.date.localeCompare(a.date));
+                    const myReceivables = allReceivables.filter(r => (s.staffIds.includes(r.staff_id) || s.staffIds.includes(r.entered_by)) && r.status !== 'paid');
                     const revPct = totalRevenue > 0 ? Math.round((s.revenue / totalRevenue) * 100) : 0;
+                    const branchStaffCount = staff.filter(st => (st.branch_name || st.name) === s.name).length;
 
                     return `<div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
                         <div class="p-4 md:p-6 border-b border-slate-800 bg-gradient-to-r from-${color}-500/5 to-transparent">
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div class="flex items-center gap-3">
-                                    <div class="h-12 w-12 rounded-xl bg-${color}-500/20 text-${color}-400 flex items-center justify-center font-bold text-lg">${(s.branch_name || s.name).substring(0, 1)}</div>
-                                    <div><h4 class="font-bold text-lg text-white">${s.branch_name || s.name}</h4>
-                                    <p class="text-xs text-slate-500">${s.branch_name ? '<span class="text-blue-400 font-bold">' + s.name + '</span>' + (s.role !== 'staff' ? ' 대표' : '') + ' · ' : ''}${roleLabel} · 매출 비중 ${revPct}%</p></div>
+                                    <div class="h-12 w-12 rounded-xl bg-${color}-500/20 text-${color}-400 flex items-center justify-center font-bold text-lg">
+                                        <span class="material-symbols-outlined text-xl">store</span>
+                                    </div>
+                                    <div><h4 class="font-bold text-lg text-white">${s.name}</h4>
+                                    <p class="text-xs text-slate-500">직원 ${branchStaffCount}명 · 매출 비중 ${revPct}%</p></div>
                                 </div>
                                 <div class="text-right"><p class="text-[10px] text-slate-500 uppercase tracking-wider">순수익</p><p class="text-lg font-bold ${s.netProfit >= 0 ? 'text-blue-400' : 'text-red-300'}">${Format.won(s.netProfit)}</p></div>
                             </div>
@@ -630,7 +648,7 @@ const DashboardPage = {
             this._charts.push(new Chart(ctx3, {
                 type: 'bar',
                 data: {
-                    labels: staffStats.map(s => s.branch_name || s.name),
+                    labels: staffStats.map(s => s.name),
                     datasets: [
                         { label: '매출', data: staffStats.map(s => s.revenue), backgroundColor: 'rgba(59,130,246,0.7)', borderRadius: 4 },
                         { label: '와리', data: staffStats.map(s => s.wari), backgroundColor: 'rgba(252,211,77,0.7)', borderRadius: 4 }
