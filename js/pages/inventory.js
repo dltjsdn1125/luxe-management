@@ -312,10 +312,11 @@ const InventoryPage = {
         </div>`;
 
         this.bindEvents(container, liquors, allInventory, orders, effectiveBranchId);
-        await this.renderCharts(liquors, orders, salesInRange);
+        const chartBranchStaffIds = (isAdmin && this.filterBranch) ? staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id) : null;
+        await this.renderCharts(liquors, chartBranchStaffIds);
     },
 
-    async renderCharts(liquors, orders, salesInRange) {
+    async renderCharts(liquors, chartBranchStaffIds) {
         if (typeof Chart === 'undefined') return;
         if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
         const chartColors = ['#3b82f6', '#10b981', '#8b5cf6', '#FCD34D', '#fca5a5', '#06b6d4', '#ec4899'];
@@ -324,8 +325,13 @@ const InventoryPage = {
         const dlCount = { color: '#fff', font: { size: 10, weight: 'bold' }, formatter: v => v > 0 ? v : '', anchor: 'end', align: 'end', offset: -2 };
         const dlWon = { color: '#fff', font: { size: 10, weight: 'bold' }, formatter: v => v > 0 ? (v/10000).toFixed(0) + '만' : '', anchor: 'end', align: 'end', offset: -2 };
 
-        // 1. 월별 발주량 vs 판매량
-        const allOrders = await DB.getAll('liquor_orders');
+        // 1. 월별 발주량 vs 판매량 (지점 필터 적용)
+        let allOrders = await DB.getAll('liquor_orders');
+        let allSales = await DB.getAll('daily_sales');
+        if (chartBranchStaffIds && chartBranchStaffIds.length) {
+            allOrders = allOrders.filter(o => chartBranchStaffIds.includes(o.entered_by));
+            allSales = allSales.filter(s => chartBranchStaffIds.includes(s.entered_by));
+        }
         const months = {};
         const last6 = [];
         for (let i = 5; i >= 0; i--) {
@@ -338,7 +344,6 @@ const InventoryPage = {
             const m = o.date ? o.date.substring(0, 7) : '';
             if (months[m] !== undefined) months[m].ordered += (o.quantity || 0);
         });
-        const allSales = await DB.getAll('daily_sales');
         allSales.forEach(s => {
             const m = s.date ? s.date.substring(0, 7) : '';
             if (months[m] !== undefined && s.liquor_items) {

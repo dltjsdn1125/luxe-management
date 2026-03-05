@@ -286,7 +286,15 @@ const GirlsPage = {
         </div>`;
 
         this.bindEvents(container, girls, staff, payments);
-        this._renderCharts(girls, payments);
+        // 차트용: 지점 필터 적용 시 해당 지점 아가씨/지급만
+        let chartGirls = girls, chartPayments = payments;
+        if (isAdmin && this.filterBranch) {
+            const filterStaffIds = staff.filter(s => s.branch_name === this.filterBranch).map(s => s.id);
+            chartGirls = girls.filter(g => filterStaffIds.includes(g.staff_id));
+            const chartGirlIds = chartGirls.map(g => g.id);
+            chartPayments = payments.filter(p => chartGirlIds.includes(p.girl_id));
+        }
+        this._renderCharts(chartGirls, chartPayments);
     },
 
     _renderCharts(girls, payments) {

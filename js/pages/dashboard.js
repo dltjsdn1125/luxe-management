@@ -155,9 +155,12 @@ const DashboardPage = {
             bs.netProfit = bs.revenue - bs.totalDeductions;
         });
 
-        // 매입/매출 데이터
+        // 매입/매출 데이터 (지점 필터 적용: 발주는 entered_by 기준)
         const allOrdersRaw = await DB.getAll('liquor_orders');
-        const allOrders = PeriodFilter.filterByDate(allOrdersRaw, 'date', range.from, range.to);
+        let allOrders = PeriodFilter.filterByDate(allOrdersRaw, 'date', range.from, range.to);
+        if (this.filterBranch) {
+            allOrders = allOrders.filter(o => filteredStaffIds.includes(o.entered_by));
+        }
         const cashRevenue = allSales.reduce((s, r) => s + (Number(r.cash_amount) || 0), 0);
         const cardRevenue = allSales.reduce((s, r) => s + (Number(r.card_amount) || 0), 0);
         const creditRevenue = allSales.reduce((s, r) => s + (Number(r.credit_amount) || 0), 0);
@@ -625,8 +628,8 @@ const DashboardPage = {
             </div>
         </div>`;
 
-        // 차트 렌더링
-        this._renderAdminCharts(allSalesRaw, allExpensesRaw, allReceivablesRaw, staffStats, expenseByCategory);
+        // 차트 렌더링 (지점 필터 적용된 데이터 전달)
+        this._renderAdminCharts(allSales, allExpenses, allReceivables, staffStats, expenseByCategory);
     },
 
     _renderAdminCharts(allSalesRaw, allExpensesRaw, allReceivablesRaw, staffStats, expenseByCategory) {
