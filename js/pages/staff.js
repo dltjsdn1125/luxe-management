@@ -563,8 +563,16 @@ const StaffPage = {
                 const standbyFee = girl.standby_fee || 150000;
 
                 if (worked) {
-                    const allPay = await DB.getAll('girl_payments');
-                    const existing = allPay.find(p => p.girl_id === girlId && p.date === date && p.type === 'standby');
+                    // 해당 날짜+아가씨 레코드만 직접 쿼리 (getAll 1000건 제한 우회)
+                    const { data: payData } = await window._supabase
+                        .from('girl_payments')
+                        .select('id')
+                        .eq('_deleted', false)
+                        .eq('girl_id', girlId)
+                        .eq('date', date)
+                        .eq('type', 'standby')
+                        .limit(1);
+                    const existing = payData && payData[0];
                     if (existing) {
                         await DB.delete('girl_payments', existing.id);
                         App.toast(girlName + ' ' + date + ' 출근 취소', 'success');
