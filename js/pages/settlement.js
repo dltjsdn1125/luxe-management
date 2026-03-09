@@ -747,7 +747,7 @@ const SettlementPage = {
         const timeCells = timeSlots.map(s => `<td class="border border-gray-300 p-0 time-cell" style="width:56px;min-width:56px"><div class="time-cell-wrap relative"><input type="time" class="girl-time-${s} w-full bg-transparent border-0 text-[10px] text-gray-900 text-center p-0.5" placeholder="${timePlaceholders[s]}" style="min-width:0;width:100%"/><button type="button" class="time-clear-btn" title="지우기">×</button></div></td>`).join('');
         const girlRows = Array.from({length: 7}, (_, i) => `
                     <tr class="girl-row">
-                        <td class="border border-gray-300 text-center text-[10px] text-gray-600 py-0" style="width:22px">${i+1}</td>
+                        <td class="border border-gray-300 text-center text-[10px] text-gray-600 py-0" style="width:28px;min-width:28px">${i+1}</td>
                         <td class="border border-gray-300 p-0" style="min-width:60px">
                             <select class="girl-select w-full bg-transparent border-0 text-[10px] text-gray-900 py-0.5 px-0.5 h-full placeholder:text-gray-400" style="max-width:100%">
                                 <option value=""></option>
@@ -782,7 +782,7 @@ const SettlementPage = {
                 <table style="border-collapse:collapse;width:100%;min-width:520px">
                     <tbody class="room-girls">
                         <tr>
-                            <td class="border border-gray-300 bg-gray-100 text-center text-[10px] text-gray-700" style="width:22px">no</td>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-[10px] text-gray-700" style="width:28px;min-width:28px">no</td>
                             <td class="border border-gray-300 bg-gray-100 text-center text-[10px] text-gray-700" style="min-width:60px">이름</td>
                             <td class="border border-gray-300 bg-gray-100 text-center text-[10px] text-gray-700 py-0.5 px-0.5" style="width:32px">타임</td>
                             ${[0,1,2,3,4,5,6].map(n => `<td class="border border-gray-300 bg-gray-100 text-center text-[10px] text-gray-600 py-0.5 align-middle" style="width:56px;min-width:56px">${n}</td>`).join('')}
