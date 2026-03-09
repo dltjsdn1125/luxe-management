@@ -463,9 +463,12 @@ const SettlementPage = {
             ExcelExport.exportSettlements(settlements, staff);
         });
         PeriodFilter.bindEvents(container, 'st', (type, from, to) => {
-            this.periodType = type; this.customFrom = from; this.customTo = to;
+            this.periodType = type;
+            this.customFrom = from;
+            this.customTo = to || from;
             this.page = 1;
-            this.mode = 'list'; App.renderPage('settlement');
+            this.mode = 'list';
+            App.renderPage('settlement');
         });
 
         container.querySelectorAll('.st-branch-filter').forEach(btn => {

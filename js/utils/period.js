@@ -11,6 +11,18 @@ const PeriodFilter = {
                 to = new Date(today);
                 break;
             }
+            case 'yesterday': {
+                from = new Date(today);
+                from.setDate(today.getDate() - 1);
+                to = new Date(from);
+                break;
+            }
+            case 'date': {
+                const d = customFrom ? new Date(customFrom) : new Date(today);
+                from = new Date(d);
+                to = new Date(d);
+                break;
+            }
             case 'week': {
                 const day = today.getDay();
                 from = new Date(today);
@@ -64,6 +76,10 @@ const PeriodFilter = {
         switch (type) {
             case 'today':
                 return `${f.getFullYear()}년 ${f.getMonth() + 1}월 ${f.getDate()}일 (오늘)`;
+            case 'yesterday':
+                return `${f.getFullYear()}년 ${f.getMonth() + 1}월 ${f.getDate()}일 (어제)`;
+            case 'date':
+                return `${f.getFullYear()}년 ${f.getMonth() + 1}월 ${f.getDate()}일`;
             case 'week':
                 return `${f.getMonth() + 1}/${f.getDate()} ~ ${t.getMonth() + 1}/${t.getDate()} (이번 주)`;
             case 'month':
@@ -105,6 +121,8 @@ const PeriodFilter = {
         const prefix = cssPrefix || 'pf';
         const types = [
             { key: 'today', label: '오늘' },
+            { key: 'yesterday', label: '어제' },
+            { key: 'date', label: '날짜조회' },
             { key: 'week', label: '이번 주' },
             { key: 'month', label: '이번 달' },
             { key: 'quarter', label: '분기' },
@@ -127,11 +145,19 @@ const PeriodFilter = {
                         <button class="${prefix}-type px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${currentType === t.key ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-period="${t.key}">${t.label}</button>
                     `).join('')}
                 </div>
-                ${currentType === 'custom' ? `
+                ${currentType === 'date' ? `
+                <div class="flex items-center gap-2 ml-auto flex-wrap">
+                    <div class="flex gap-1">
+                        <button class="${prefix}-prev-day px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-400 hover:bg-slate-700 transition-colors" title="이전 날">‹</button>
+                        <button class="${prefix}-next-day px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-400 hover:bg-slate-700 transition-colors" title="다음 날">›</button>
+                    </div>
+                    <input type="date" class="${prefix}-date bg-slate-800 border border-slate-700 rounded-lg text-xs px-2 py-1.5" value="${customFrom || range.from}" title="조회할 날짜 선택"/>
+                    <button class="${prefix}-apply-date px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition-colors">조회</button>
+                </div>` : currentType === 'custom' ? `
                 <div class="flex items-center gap-2 ml-auto">
-                    <input type="date" class="${prefix}-from bg-slate-800 border-slate-700 rounded-lg text-xs px-2 py-1.5" value="${customFrom || range.from}"/>
+                    <input type="date" class="${prefix}-from bg-slate-800 border border-slate-700 rounded-lg text-xs px-2 py-1.5" value="${customFrom || range.from}"/>
                     <span class="text-slate-600 text-xs">~</span>
-                    <input type="date" class="${prefix}-to bg-slate-800 border-slate-700 rounded-lg text-xs px-2 py-1.5" value="${customTo || range.to}"/>
+                    <input type="date" class="${prefix}-to bg-slate-800 border border-slate-700 rounded-lg text-xs px-2 py-1.5" value="${customTo || range.to}"/>
                     <button class="${prefix}-apply px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition-colors">적용</button>
                 </div>` : `
                 <div class="ml-auto text-xs text-slate-500 font-mono">${range.label}</div>`}
@@ -156,6 +182,52 @@ const PeriodFilter = {
                 callback('custom', from, to);
             });
         }
+
+        const applyDateBtn = container.querySelector(`.${prefix}-apply-date`);
+        if (applyDateBtn) {
+            applyDateBtn.addEventListener('click', () => {
+                const dateInput = container.querySelector(`.${prefix}-date`);
+                const date = dateInput ? dateInput.value : null;
+                if (date) callback('date', date, date);
+            });
+        }
+        const dateInput = container.querySelector(`.${prefix}-date`);
+        if (dateInput) {
+            dateInput.addEventListener('change', () => {
+                if (dateInput.value) callback('date', dateInput.value, dateInput.value);
+            });
+        }
+        const prevDayBtn = container.querySelector(`.${prefix}-prev-day`);
+        if (prevDayBtn) {
+            prevDayBtn.addEventListener('click', () => {
+                const dateInput = container.querySelector(`.${prefix}-date`);
+                if (!dateInput || !dateInput.value) return;
+                const d = new Date(dateInput.value);
+                d.setDate(d.getDate() - 1);
+                const next = this._toDateStr(d);
+                dateInput.value = next;
+                callback('date', next, next);
+            });
+        }
+        const nextDayBtn = container.querySelector(`.${prefix}-next-day`);
+        if (nextDayBtn) {
+            nextDayBtn.addEventListener('click', () => {
+                const dateInput = container.querySelector(`.${prefix}-date`);
+                if (!dateInput || !dateInput.value) return;
+                const d = new Date(dateInput.value);
+                d.setDate(d.getDate() + 1);
+                const next = this._toDateStr(d);
+                dateInput.value = next;
+                callback('date', next, next);
+            });
+        }
+    },
+
+    _toDateStr(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
     }
 };
 
