@@ -1,3 +1,4 @@
 {
+  "installCommand": "npm install --ignore-scripts",
   "buildCommand": "npm run build"
 }
