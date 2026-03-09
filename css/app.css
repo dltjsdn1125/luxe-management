@@ -46,6 +46,13 @@ body {
     border: 1px solid rgba(252, 165, 165, 0.3) !important;
 }
 
+/* 모바일/태블릿: 정산 룸 카드 무조건 1열 */
+@media (max-width: 1279px) {
+    #main-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
 /* Paper grid for settlement sheet */
 .paper-grid {
     background-image: linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
