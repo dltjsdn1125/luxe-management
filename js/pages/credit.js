@@ -82,7 +82,7 @@ const CreditPage = {
             </div>
 
             <!-- 요약 카드 -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 <div class="bg-slate-900 p-4 md:p-6 rounded-2xl border border-slate-800">
                     <div class="flex items-center justify-between mb-4">
                         <span class="p-2 bg-blue-500/10 rounded-lg text-blue-500"><span class="material-symbols-outlined">payments</span></span>

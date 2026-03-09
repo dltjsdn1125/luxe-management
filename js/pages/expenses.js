@@ -75,7 +75,7 @@ const ExpensesPage = {
             </div>` : ''}
 
             <!-- 기간 요약 -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-slate-900 p-4 md:p-5 rounded-xl border border-slate-800 col-span-2 md:col-span-1">
                     <p class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">기간 총 지출</p>
                     <p class="text-xl md:text-2xl font-black text-white">${Format.won(periodTotal)}</p>

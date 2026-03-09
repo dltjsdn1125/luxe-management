@@ -252,7 +252,7 @@ const DashboardPage = {
                         <span class="text-[10px] font-bold ${closedBranchCount === branchNames.length ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-300 bg-amber-300/10'} px-1.5 py-0.5 rounded-full">${closedBranchCount}/${branchNames.length}</span>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-2">
                     ${closureTargetBranches.map(bn => {
                         const bc = branchClosureMap[bn];
                         let bgClass, avatarClass, labelClass, statusHtml;
@@ -297,7 +297,7 @@ const DashboardPage = {
             </div>
 
             <!-- 요약 카드 -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
                 <div class="bg-slate-900 p-3 md:p-5 rounded-xl border border-slate-800 min-w-0">
                     <div class="flex justify-between items-start mb-2"><div class="p-1.5 md:p-2 bg-emerald-500/10 rounded-lg text-emerald-500"><span class="material-symbols-outlined text-base md:text-lg">payments</span></div></div>
                     <p class="text-slate-500 text-[10px] uppercase tracking-wider font-semibold truncate">총 매출</p>
@@ -828,7 +828,7 @@ const DashboardPage = {
 
             <div class="mb-6">${PeriodFilter.renderUI(this.periodType, this.customFrom, this.customTo, 'db')}</div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
                 <div class="bg-slate-900 p-4 md:p-6 rounded-xl border border-slate-800">
                     <p class="text-slate-500 text-xs uppercase tracking-wider font-semibold mb-2">${labelMy} 총 매출</p>
                     <h3 class="text-2xl font-bold text-white">${Format.won(totalRevenue)}</h3>

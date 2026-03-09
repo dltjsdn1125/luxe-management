@@ -311,7 +311,7 @@ const SettlementPage = {
             </div>` : ''}
 
             <!-- 전체 요약 카드 -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
                     <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">총 매출</p>
                     <p class="text-lg md:text-xl font-black text-white">${Format.won(sumRevenue)}</p>
@@ -689,7 +689,7 @@ const SettlementPage = {
             </div>
 
             <!-- 4열 그리드: 룸 카드 + 통합 카드 (빈자리) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2" id="main-grid">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2" id="main-grid">
                 <div id="rooms-container" style="display:contents"></div>
                 <div id="daily-summary-card" class="bg-white rounded-lg border border-gray-300 shadow-sm overflow-hidden min-w-0 h-full w-full">
                     <table class="w-full h-full text-[10px] font-normal daily-summary-table" style="border-collapse:collapse;table-layout:fixed">

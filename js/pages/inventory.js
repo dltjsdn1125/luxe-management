@@ -222,7 +222,7 @@ const InventoryPage = {
             </div>` : ''}
 
             <!-- 재고 현황 카드 (지점별 필터) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 ${liquors.map(l => {
                     const inv = InventoryPage._getInvForLiquor(allInventory, l.id, effectiveBranchId);
                     const qty = inv ? inv.quantity : 0;
