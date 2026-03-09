@@ -689,7 +689,7 @@ const SettlementPage = {
             </div>
 
             <!-- 4열 그리드: 룸 카드 + 통합 카드 (빈자리) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2" id="main-grid">
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-2" id="main-grid">
                 <div id="rooms-container" style="display:contents"></div>
                 <div id="daily-summary-card" class="bg-white rounded-lg border border-gray-300 shadow-sm overflow-hidden min-w-0 h-full w-full">
                     <table class="w-full h-full text-[10px] font-normal daily-summary-table" style="border-collapse:collapse;table-layout:fixed">
