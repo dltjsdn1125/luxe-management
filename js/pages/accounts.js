@@ -1,9 +1,19 @@
-// 계정 관리 페이지 (관리자 전용)
+// 계정 관리 페이지 (관리자 또는 지점 담당자)
 const AccountsPage = {
+    async _getBranchManagerBranches() {
+        const staffId = await Auth.getStaffId();
+        if (!staffId) return [];
+        const branches = await DB.getAll('branches');
+        return branches.filter(b => b.manager_id === staffId).map(b => b.name);
+    },
+
     async render(container) {
-        // 관리자 권한 체크
-        if (!Auth.isAdmin()) {
-            container.innerHTML = `<div class="flex items-center justify-center h-96"><p class="text-slate-500">관리자만 접근할 수 있습니다.</p></div>`;
+        const isAdmin = Auth.isAdmin();
+        const managerBranches = await this._getBranchManagerBranches();
+        const isBranchManager = !isAdmin && managerBranches.length > 0;
+
+        if (!isAdmin && !isBranchManager) {
+            container.innerHTML = `<div class="flex items-center justify-center h-96"><p class="text-slate-500">관리자 또는 지점 담당자만 접근할 수 있습니다.</p></div>`;
             return;
         }
 
@@ -11,8 +21,12 @@ const AccountsPage = {
         const staff = await DB.getAll('staff');
 
         // 계정 분류
-        const adminAccounts = users.filter(u => u.role === 'admin' || u.role === 'owner');
-        const staffAccounts = users.filter(u => u.role === 'staff');
+        const adminAccounts = isAdmin ? users.filter(u => u.role === 'admin' || u.role === 'owner') : [];
+        let staffAccounts = users.filter(u => u.role === 'staff');
+        if (isBranchManager) {
+            const branchStaffIds = new Set(staff.filter(s => managerBranches.includes(s.branch_name)).map(s => s.id));
+            staffAccounts = staffAccounts.filter(u => u.staff_id && branchStaffIds.has(u.staff_id));
+        }
 
         container.innerHTML = `
         <div class="max-w-[1200px] mx-auto p-4 md:p-6 space-y-6 md:space-y-8">
@@ -21,15 +35,15 @@ const AccountsPage = {
                     <h1 class="text-2xl font-bold text-white flex items-center gap-2">
                         <span class="material-symbols-outlined text-blue-500">manage_accounts</span> 계정 관리
                     </h1>
-                    <p class="text-slate-400 text-sm">로그인 계정을 관리하고 비밀번호를 설정합니다.</p>
+                    <p class="text-slate-400 text-sm">로그인 계정을 관리하고 비밀번호를 설정합니다.${isBranchManager ? ` <span class="text-blue-400">[${managerBranches.join(', ')}] 지점 담당</span>` : ''}</p>
                 </div>
-                <button id="btn-add-account" class="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors">
+                ${isAdmin ? `<button id="btn-add-account" class="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors">
                     <span class="material-symbols-outlined text-sm">person_add</span> 계정 추가
-                </button>
+                </button>` : ''}
             </div>
 
-            <!-- 관리자 계정 -->
-            <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+            <!-- 관리자 계정 (관리자만 표시) -->
+            ${isAdmin ? `<div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
                 <div class="p-4 md:p-5 border-b border-slate-800 flex items-center gap-2">
                     <span class="material-symbols-outlined text-yellow-300 text-lg">shield</span>
                     <h3 class="font-bold text-white">관리자 계정</h3>
@@ -76,7 +90,7 @@ const AccountsPage = {
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </div>` : ''}
 
             <!-- 직원 계정 -->
             <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
@@ -145,10 +159,10 @@ const AccountsPage = {
             </div>
         </div>`;
 
-        this.bindEvents(container, staff);
+        this.bindEvents(container, staff, staffAccounts, isAdmin, isBranchManager, managerBranches);
     },
 
-    bindEvents(container, staff) {
+    bindEvents(container, staff, staffAccounts, isAdmin, isBranchManager, managerBranches) {
         // 비밀번호 보기/숨기기
         container.querySelectorAll('.toggle-pw').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -167,10 +181,18 @@ const AccountsPage = {
         });
 
         // 계정 수정
+        const staffForModal = isBranchManager
+            ? staff.filter(s => managerBranches.includes(s.branch_name))
+            : staff;
         container.querySelectorAll('[data-edit-account]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const user = await DB.getById('users', btn.dataset.editAccount);
                 if (!user) return;
+                if (isBranchManager && user.role !== 'staff') return;
+                if (isBranchManager && user.staff_id) {
+                    const linkedStaff = staff.find(s => s.id === user.staff_id);
+                    if (!linkedStaff || !managerBranches.includes(linkedStaff.branch_name)) return;
+                }
                 const isStaffAccount = user.role === 'staff';
 
                 App.showModal('계정 수정', `
@@ -198,7 +220,7 @@ const AccountsPage = {
                             <label class="text-xs font-medium text-slate-400">연결 직원</label>
                             <select id="acc-staff" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm">
                                 <option value="">없음</option>
-                                ${staff.map(s => `<option value="${s.id}" ${s.id === user.staff_id ? 'selected' : ''}>${s.name}</option>`).join('')}
+                                ${staffForModal.map(s => `<option value="${s.id}" ${s.id === user.staff_id ? 'selected' : ''}>${s.name}</option>`).join('')}
                             </select>
                         </div>` : ''}
                     </div>
@@ -252,7 +274,7 @@ const AccountsPage = {
             });
         });
 
-        // 비밀번호 초기화
+        // 비밀번호 초기화 (지점 담당자도 가능)
         container.querySelectorAll('[data-reset-pw]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const user = await DB.getById('users', btn.dataset.resetPw);
@@ -275,11 +297,15 @@ const AccountsPage = {
             });
         });
 
-        // 계정 삭제
+        // 계정 삭제 (지점 담당자: 본인 지점 직원만)
         container.querySelectorAll('[data-delete-account]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const user = await DB.getById('users', btn.dataset.deleteAccount);
                 if (!user) return;
+                if (isBranchManager) {
+                    const linkedStaff = staff.find(s => s.id === user.staff_id);
+                    if (!linkedStaff || !managerBranches.includes(linkedStaff.branch_name)) return;
+                }
                 if (confirm(`${user.name}(${user.username}) 계정을 삭제하시겠습니까?\n연결된 직원 데이터는 유지됩니다.`)) {
                     await DB.delete('users', user.id);
                     App.toast('계정이 삭제되었습니다.', 'info');
@@ -288,8 +314,8 @@ const AccountsPage = {
             });
         });
 
-        // 계정 추가
-        document.getElementById('btn-add-account').addEventListener('click', () => {
+        // 계정 추가 (관리자만)
+        document.getElementById('btn-add-account')?.addEventListener('click', () => {
             App.showModal('새 계정 추가', `
                 <div class="space-y-4">
                     <div class="space-y-2">
@@ -319,7 +345,7 @@ const AccountsPage = {
                             <label class="text-xs font-medium text-slate-400">연결 직원</label>
                             <select id="acc-staff" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm">
                                 <option value="">없음 (관리자용)</option>
-                                ${staff.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                                ${staffForModal.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
                             </select>
                         </div>
                     </div>

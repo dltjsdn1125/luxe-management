@@ -1,4 +1,33 @@
 // 일일 영업 정산 페이지 (룸 단위 정산)
+// 장부form/통합문서1-structure.json 또는 아래 기본 구조로 지점별 테이블 렌더링
+const SETTLEMENT_TABLE_DEFAULT = {
+    branchDailySettlement: {
+        headerRowCount: 1,
+        headerCells: [
+            { label: '지점 / 직원', colSpan: 1, rowSpan: 1 },
+            { label: '총 매출', colSpan: 1, rowSpan: 1 },
+            { label: '와리', colSpan: 1, rowSpan: 1 },
+            { label: '아가씨', colSpan: 1, rowSpan: 1 },
+            { label: '지출', colSpan: 1, rowSpan: 1 },
+            { label: '순이익', colSpan: 1, rowSpan: 1 },
+            { label: '이익률', colSpan: 1, rowSpan: 1 },
+            { label: '정산금', colSpan: 1, rowSpan: 1 },
+            { label: '비중', colSpan: 1, rowSpan: 1 }
+        ],
+        columns: [
+            { key: 'branch', label: '지점 / 직원', align: 'left' },
+            { key: 'revenue', label: '총 매출', align: 'right' },
+            { key: 'wari', label: '와리', align: 'right' },
+            { key: 'girlPay', label: '아가씨', align: 'right' },
+            { key: 'expenses', label: '지출', align: 'right' },
+            { key: 'netProfit', label: '순이익', align: 'right' },
+            { key: 'margin', label: '이익률', align: 'right' },
+            { key: 'settlement', label: '정산금', align: 'right' },
+            { key: 'share', label: '비중', align: 'right' }
+        ]
+    }
+};
+
 const SettlementPage = {
     mode: 'list',
     editId: null,
@@ -9,6 +38,43 @@ const SettlementPage = {
     roomCounter: 0,
     page: 1,
     pageSize: 50,
+    _tableStructure: null,
+
+    async _getTableStructure() {
+        if (this._tableStructure) return this._tableStructure;
+        try {
+            const url = new URL('장부form/통합문서1-structure.json', window.location.href).href;
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), 3000);
+            const r = await fetch(url, { signal: ctrl.signal });
+            clearTimeout(t);
+            if (r.ok) {
+                const j = await r.json();
+                if (j && j.branchDailySettlement) {
+                    this._tableStructure = j;
+                    return this._tableStructure;
+                }
+            }
+        } catch (e) { /* 404, CORS, timeout 등 → 기본 구조 사용 */ }
+        this._tableStructure = SETTLEMENT_TABLE_DEFAULT;
+        return this._tableStructure;
+    },
+
+    _renderBranchTableHeader(cfg) {
+        const cells = (cfg && cfg.headerCells) || SETTLEMENT_TABLE_DEFAULT.branchDailySettlement.headerCells;
+        return cells.map(h =>
+            `<th class="px-4 py-3 ${h.label === '지점 / 직원' || h.label.indexOf('지점') >= 0 ? 'text-left' : 'text-right'} text-[10px] text-slate-500 uppercase tracking-wider" ${h.colSpan > 1 ? `colspan="${h.colSpan}"` : ''} ${h.rowSpan > 1 ? `rowspan="${h.rowSpan}"` : ''}>${h.label}</th>`
+        ).join('');
+    },
+
+    _renderBranchDataRow(cellsByKey, columns, rowClass, cellClass = 'px-4 py-3.5') {
+        const cols = (columns && columns.length) ? columns : SETTLEMENT_TABLE_DEFAULT.branchDailySettlement.columns;
+        return cols.map(col => {
+            const val = cellsByKey[col.key];
+            const align = col.align === 'left' ? 'text-left' : 'text-right';
+            return `<td class="${cellClass} ${align} ${typeof val === 'string' && val.indexOf('text-') >= 0 ? '' : ''}">${val != null ? val : ''}</td>`;
+        }).join('');
+    },
 
     async _getTcUnit(branchId) {
         if (!branchId) {
@@ -33,6 +99,31 @@ const SettlementPage = {
         let exitMin = xh * 60 + xm;
         if (exitMin <= entryMin) exitMin += 24 * 60;
         return Math.max(0, Math.round((exitMin - entryMin) / 60));
+    },
+
+    /** 빈 time input의 data-empty 동기화 (--:-- placeholder 숨김용) */
+    _syncTimeInputEmptyState(input) {
+        if (input && input.type === 'time') {
+            input.dataset.empty = input.value ? 'false' : 'true';
+        }
+    },
+    _syncAllTimeInputs(root) {
+        (root || document).querySelectorAll('#settlement-form-root input[type="time"]').forEach(inp => this._syncTimeInputEmptyState(inp));
+    },
+
+    /** time 0~6 슬롯의 HH:MM 입력 → T 합산 (1시간=1, 30분=0.5) */
+    _calcTimesFromSlots(times) {
+        const vals = times.filter(Boolean).map(t => {
+            const [h, m] = t.split(':').map(Number);
+            return (h || 0) * 60 + (m || 0); // 분 단위
+        });
+        if (vals.length === 0) return 0;
+        if (vals.length === 1) return 1; // 1개 입력 = 1시간
+        const min = Math.min(...vals);
+        const max = Math.max(...vals);
+        const diffMin = max - min;
+        const hours = Math.floor(diffMin / 60) + (diffMin % 60) / 60; // 1h=1, 30m=0.5
+        return Math.round(hours * 10) / 10; // 0.5 단위
     },
 
     async getSettlements() {
@@ -114,74 +205,83 @@ const SettlementPage = {
 
         const branchEntries = Object.entries(branchGroupMap).sort((a, b) => b[1].revenue - a[1].revenue);
 
-        // ── 지점별 아코디언 HTML 생성 ──
+        const structure = await this._getTableStructure();
+        const tableCfg = structure.branchDailySettlement || SETTLEMENT_TABLE_DEFAULT.branchDailySettlement;
+        const columns = tableCfg.columns || SETTLEMENT_TABLE_DEFAULT.branchDailySettlement.columns;
+
+        // ── 지점별 아코디언 HTML 생성 (통합문서1-structure.json 컬럼/헤더 구조 적용) ──
         const buildBranchRows = (branchName, bg) => {
             const netP = bg.revenue - bg.wari - bg.girlPay - bg.expenses;
             const margin = bg.revenue > 0 ? Math.round(netP / bg.revenue * 100) : 0;
             const share = sumRevenue > 0 ? (bg.revenue / sumRevenue * 100).toFixed(1) : '0.0';
             const branchId = 'branch_' + branchName.replace(/\s/g, '_');
 
-            // 직원별 서브 행
+            const branchCells = {
+                branch: `<div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-slate-500 text-base branch-chevron transition-transform" data-chevron="${branchId}">chevron_right</span>
+                    <div class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-blue-400 text-sm">store</span>
+                    </div>
+                    <div>
+                        <span class="font-bold text-white text-sm">${branchName}</span>
+                        <span class="text-[10px] text-slate-500 ml-2">${bg.count}건 · ${Object.keys(bg.staffMap).length}명</span>
+                    </div>
+                </div>`,
+                revenue: `<span class="font-bold text-white">${Format.won(bg.revenue)}</span>`,
+                wari: `<span class="font-mono text-yellow-300 text-xs">${Format.won(bg.wari)}</span>`,
+                girlPay: `<span class="font-mono text-pink-400 text-xs">${Format.won(bg.girlPay)}</span>`,
+                expenses: `<span class="font-mono text-slate-400 text-xs">${Format.won(bg.expenses)}</span>`,
+                netProfit: `<span class="font-bold ${netP >= 0 ? 'text-emerald-400' : 'text-red-300'}">${Format.won(netP)}</span>`,
+                margin: `<span class="font-mono text-xs ${margin >= 0 ? 'text-emerald-400' : 'text-red-300'}">${margin}%</span>`,
+                settlement: `<span class="font-mono text-blue-400">${Format.won(bg.settlement)}</span>`,
+                share: `<div class="flex items-center justify-end gap-2">
+                    <div class="w-14 bg-slate-800 rounded-full h-1.5">
+                        <div class="bg-blue-500 h-1.5 rounded-full" style="width:${share}%"></div>
+                    </div>
+                    <span class="text-[10px] text-slate-400 font-mono">${share}%</span>
+                </div>`
+            };
+
             const staffRows = Object.entries(bg.staffMap).map(([sid, sm]) => {
                 const sv = staff.find(x => x.id === sid);
                 const roleLabel = sv ? (sv.role === 'president' ? '영업사장' : sv.role === 'manager' ? '영업실장' : '스탭') : '';
                 const roleColor = sv ? (sv.role === 'president' ? 'text-yellow-300' : sv.role === 'manager' ? 'text-blue-300' : 'text-slate-400') : 'text-slate-400';
                 const smNet = sm.revenue - sm.wari - sm.girlPay - sm.expenses;
                 const smMargin = sm.revenue > 0 ? Math.round(smNet / sm.revenue * 100) : 0;
-                return `
-                <tr class="branch-detail-row hidden bg-slate-950/60 border-l-2 border-blue-500/30" data-branch-group="${branchId}">
-                    <td class="pl-10 pr-4 py-2.5">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-slate-600 text-sm">subdirectory_arrow_right</span>
-                            <span class="${roleColor} text-[10px] font-bold">${roleLabel}</span>
-                            <span class="text-slate-300 text-xs font-semibold">${sv ? sv.name : '알 수 없음'}</span>
-                            <span class="text-slate-600 text-[10px]">${sm.count}건</span>
-                        </div>
-                    </td>
-                    <td class="px-4 py-2.5 text-right font-mono text-slate-200 text-xs">${Format.won(sm.revenue)}</td>
-                    <td class="px-4 py-2.5 text-right font-mono text-yellow-300/70 text-xs">${Format.won(sm.wari)}</td>
-                    <td class="px-4 py-2.5 text-right font-mono text-pink-400/70 text-xs">${Format.won(sm.girlPay)}</td>
-                    <td class="px-4 py-2.5 text-right font-mono text-slate-500 text-xs">${Format.won(sm.expenses)}</td>
-                    <td class="px-4 py-2.5 text-right font-mono text-xs ${smNet >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'}">${Format.won(smNet)}</td>
-                    <td class="px-4 py-2.5 text-right font-mono text-xs ${smMargin >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'}">${smMargin}%</td>
-                    <td class="px-4 py-2.5 text-right font-mono text-blue-400/70 text-xs">${Format.won(sm.settlement)}</td>
-                    <td class="px-4 py-2.5 text-right">
-                        <button class="text-[10px] text-blue-400 hover:underline btn-view-staff-sales" data-staff-id="${sid}" data-branch="${branchName}">내역보기</button>
-                    </td>
-                </tr>`;
+                const staffCells = {
+                    branch: `<div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-slate-600 text-sm">subdirectory_arrow_right</span>
+                        <span class="${roleColor} text-[10px] font-bold">${roleLabel}</span>
+                        <span class="text-slate-300 text-xs font-semibold">${sv ? sv.name : '알 수 없음'}</span>
+                        <span class="text-slate-600 text-[10px]">${sm.count}건</span>
+                    </div>`,
+                    revenue: `<span class="font-mono text-slate-200 text-xs">${Format.won(sm.revenue)}</span>`,
+                    wari: `<span class="font-mono text-yellow-300/70 text-xs">${Format.won(sm.wari)}</span>`,
+                    girlPay: `<span class="font-mono text-pink-400/70 text-xs">${Format.won(sm.girlPay)}</span>`,
+                    expenses: `<span class="font-mono text-slate-500 text-xs">${Format.won(sm.expenses)}</span>`,
+                    netProfit: `<span class="font-mono text-xs ${smNet >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'}">${Format.won(smNet)}</span>`,
+                    margin: `<span class="font-mono text-xs ${smMargin >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'}">${smMargin}%</span>`,
+                    settlement: `<span class="font-mono text-blue-400/70 text-xs">${Format.won(sm.settlement)}</span>`,
+                    share: `<button class="text-[10px] text-blue-400 hover:underline btn-view-staff-sales" data-staff-id="${sid}" data-branch="${branchName}">내역보기</button>`
+                };
+                const tds = columns.map(col => {
+                    const val = staffCells[col.key];
+                    const align = col.align === 'left' ? 'text-left' : 'text-right';
+                    const baseClass = col.key === 'branch' ? 'pl-10 pr-4 py-2.5' : 'px-4 py-2.5 text-right';
+                    return `<td class="${baseClass} ${align}">${val != null ? val : ''}</td>`;
+                }).join('');
+                return `<tr class="branch-detail-row hidden bg-slate-950/60 border-l-2 border-blue-500/30" data-branch-group="${branchId}">${tds}</tr>`;
+            }).join('');
+
+            const branchTds = columns.map(col => {
+                const val = branchCells[col.key];
+                const align = col.align === 'left' ? 'text-left' : 'text-right';
+                const baseClass = col.key === 'branch' ? 'px-4 py-3.5' : 'px-4 py-3.5 text-right';
+                return `<td class="${baseClass} ${align}">${val != null ? val : ''}</td>`;
             }).join('');
 
             return `
-            <!-- 지점 헤더 행 (클릭으로 펼치기) -->
-            <tr class="branch-header-row hover:bg-slate-800/50 cursor-pointer transition-colors border-b border-slate-700/50" data-branch-toggle="${branchId}">
-                <td class="px-4 py-3.5">
-                    <div class="flex items-center gap-3">
-                        <span class="material-symbols-outlined text-slate-500 text-base branch-chevron transition-transform" data-chevron="${branchId}">chevron_right</span>
-                        <div class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-blue-400 text-sm">store</span>
-                        </div>
-                        <div>
-                            <span class="font-bold text-white text-sm">${branchName}</span>
-                            <span class="text-[10px] text-slate-500 ml-2">${bg.count}건 · ${Object.keys(bg.staffMap).length}명</span>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-4 py-3.5 text-right font-bold text-white">${Format.won(bg.revenue)}</td>
-                <td class="px-4 py-3.5 text-right font-mono text-yellow-300 text-xs">${Format.won(bg.wari)}</td>
-                <td class="px-4 py-3.5 text-right font-mono text-pink-400 text-xs">${Format.won(bg.girlPay)}</td>
-                <td class="px-4 py-3.5 text-right font-mono text-slate-400 text-xs">${Format.won(bg.expenses)}</td>
-                <td class="px-4 py-3.5 text-right font-bold ${netP >= 0 ? 'text-emerald-400' : 'text-red-300'}">${Format.won(netP)}</td>
-                <td class="px-4 py-3.5 text-right font-mono text-xs ${margin >= 0 ? 'text-emerald-400' : 'text-red-300'}">${margin}%</td>
-                <td class="px-4 py-3.5 text-right font-mono text-blue-400">${Format.won(bg.settlement)}</td>
-                <td class="px-4 py-3.5 text-right">
-                    <div class="flex items-center justify-end gap-2">
-                        <div class="w-14 bg-slate-800 rounded-full h-1.5">
-                            <div class="bg-blue-500 h-1.5 rounded-full" style="width:${share}%"></div>
-                        </div>
-                        <span class="text-[10px] text-slate-400 font-mono">${share}%</span>
-                    </div>
-                </td>
-            </tr>
+            <tr class="branch-header-row hover:bg-slate-800/50 cursor-pointer transition-colors border-b border-slate-700/50" data-branch-toggle="${branchId}">${branchTds}</tr>
             ${staffRows}`;
         };
 
@@ -259,33 +359,31 @@ const SettlementPage = {
                     <table class="w-full text-sm" style="min-width:900px">
                         <thead>
                             <tr class="bg-slate-800/60 text-[10px] text-slate-500 uppercase tracking-wider">
-                                <th class="px-4 py-3 text-left">지점 / 직원</th>
-                                <th class="px-4 py-3 text-right">총 매출</th>
-                                <th class="px-4 py-3 text-right">와리</th>
-                                <th class="px-4 py-3 text-right">아가씨</th>
-                                <th class="px-4 py-3 text-right">지출</th>
-                                <th class="px-4 py-3 text-right">순이익</th>
-                                <th class="px-4 py-3 text-right">이익률</th>
-                                <th class="px-4 py-3 text-right">정산금</th>
-                                <th class="px-4 py-3 text-right">비중</th>
+                                ${this._renderBranchTableHeader(tableCfg)}
                             </tr>
                         </thead>
                         <tbody id="branch-accordion-tbody">
                             ${isAdmin
                                 ? branchEntries.map(([bn, bg]) => buildBranchRows(bn, bg)).join('')
-                                : `<tr><td colspan="9" class="px-4 py-8 text-center text-slate-500">관리자만 지점별 현황을 볼 수 있습니다.</td></tr>`
+                                : `<tr><td colspan="${columns.length}" class="px-4 py-8 text-center text-slate-500">관리자만 지점별 현황을 볼 수 있습니다.</td></tr>`
                             }
-                            <!-- 합계 행 -->
                             <tr class="bg-slate-800/50 border-t-2 border-slate-700 font-bold">
-                                <td class="px-4 py-3 text-white">전체 합계</td>
-                                <td class="px-4 py-3 text-right text-white">${Format.won(sumRevenue)}</td>
-                                <td class="px-4 py-3 text-right text-yellow-300 text-xs">${Format.won(sumWari)}</td>
-                                <td class="px-4 py-3 text-right text-pink-400 text-xs">${Format.won(sumGirlPay)}</td>
-                                <td class="px-4 py-3 text-right text-slate-400 text-xs">${Format.won(sumExpenses)}</td>
-                                <td class="px-4 py-3 text-right ${sumNetProfit >= 0 ? 'text-emerald-400' : 'text-red-300'}">${Format.won(sumNetProfit)}</td>
-                                <td class="px-4 py-3 text-right ${sumNetProfit >= 0 ? 'text-emerald-400' : 'text-red-300'}">${sumRevenue > 0 ? Math.round(sumNetProfit / sumRevenue * 100) : 0}%</td>
-                                <td class="px-4 py-3 text-right text-blue-400">${Format.won(sumSettlement)}</td>
-                                <td class="px-4 py-3 text-right text-slate-500 text-xs">100%</td>
+                                ${columns.map((col, i) => {
+                                    const align = col.align === 'left' ? 'text-left' : 'text-right';
+                                    let val;
+                                    if (col.key === 'branch') val = '전체 합계';
+                                    else if (col.key === 'revenue') val = Format.won(sumRevenue);
+                                    else if (col.key === 'wari') val = Format.won(sumWari);
+                                    else if (col.key === 'girlPay') val = Format.won(sumGirlPay);
+                                    else if (col.key === 'expenses') val = Format.won(sumExpenses);
+                                    else if (col.key === 'netProfit') val = Format.won(sumNetProfit);
+                                    else if (col.key === 'margin') val = sumRevenue > 0 ? Math.round(sumNetProfit / sumRevenue * 100) + '%' : '0%';
+                                    else if (col.key === 'settlement') val = Format.won(sumSettlement);
+                                    else if (col.key === 'share') val = '100%';
+                                    else val = '';
+                                    const cls = col.key === 'branch' ? 'text-white' : col.key === 'revenue' ? 'text-white' : col.key === 'wari' ? 'text-yellow-300 text-xs' : col.key === 'girlPay' ? 'text-pink-400 text-xs' : col.key === 'expenses' ? 'text-slate-400 text-xs' : col.key === 'margin' || col.key === 'netProfit' ? (sumNetProfit >= 0 ? 'text-emerald-400' : 'text-red-300') : col.key === 'settlement' ? 'text-blue-400' : col.key === 'share' ? 'text-slate-500 text-xs' : 'text-xs';
+                                    return `<td class="px-4 py-3 ${align} ${cls}">${val}</td>`;
+                                }).join('')}
                             </tr>
                         </tbody>
                     </table>
@@ -546,7 +644,7 @@ const SettlementPage = {
         return allStaff.find(s => s.id === enteredById) || null;
     },
 
-    // ═══ 룸 기반 정산 입력 폼 ═══
+    // ═══ 룸 기반 정산 입력 폼 (엑셀 레이아웃: 4열×3행 그리드) ═══
     async renderForm(container) {
         const isAdmin = Auth.isAdmin();
         const allStaff = await DB.getAll('staff');
@@ -561,219 +659,196 @@ const SettlementPage = {
         const tcUnit = await this._getTcUnit();
         this.roomCounter = 0;
 
+        const dateObj = today ? new Date(today + 'T00:00:00') : new Date();
+        const dayNames = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+        const dateDisplay = `${dateObj.getFullYear()}년 ${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 ${dayNames[dateObj.getDay()]}`;
+
         container.innerHTML = `
-        <div class="max-w-[1600px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <section class="lg:col-span-7 flex flex-col gap-4">
-                <div class="flex items-center gap-3">
-                    <button id="btn-back-list" class="p-2 hover:bg-slate-800 rounded-lg"><span class="material-symbols-outlined text-slate-400">arrow_back</span></button>
-                    <div>
-                        <h1 class="text-xl font-bold">새 정산 입력</h1>
-                        ${!isAdmin && myStaff ? `<p class="text-xs text-blue-400">입력자: ${myStaff.name}</p>` : ''}
-                    </div>
-                </div>
-
-                <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-slate-500">날짜</label>
-                            <input id="s-date" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm" type="date" value="${today}"/>
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-slate-500">T/C 단가</label>
-                            <input id="s-tc-unit" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm font-mono amount-input" value="${Format.number(tcUnit)}"/>
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-slate-500">시제 (시재금)</label>
-                            <input id="s-petty-cash" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm font-mono amount-input" placeholder="0"/>
-                        </div>
-                        ${isAdmin ? `<div class="space-y-1">
-                            <label class="text-[10px] font-bold text-slate-500">입력 직원</label>
-                            <select id="s-entered-by" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm">
-                                <option value="">관리자</option>
-                                ${staff.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
-                            </select>
-                        </div>` : ''}
-                    </div>
-                </div>
-
-                <div id="rooms-container" class="space-y-4"></div>
-
-                <button id="btn-add-room" class="w-full py-3 border-2 border-dashed border-slate-700 rounded-xl text-sm font-bold text-slate-400 hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-2">
-                    <span class="material-symbols-outlined text-base">add</span> 룸 추가
+        <div id="settlement-form-root" class="p-3 space-y-2 bg-gray-100 min-h-screen">
+            <!-- 상단 헤더 (날짜 + 설정 + 저장) -->
+            <div class="flex items-center gap-2 flex-wrap bg-white px-3 py-2 rounded-xl border border-gray-300 text-xs shadow-sm">
+                <button id="btn-back-list" class="p-1 hover:bg-gray-100 rounded-lg shrink-0">
+                    <span class="material-symbols-outlined text-gray-600" style="font-size:16px">arrow_back</span>
                 </button>
-
-                <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">와리 (인센티브)</h3>
-                    <p class="text-[10px] text-slate-600 mb-2">직원</p>
-                    <div id="wari-items" class="space-y-2">
-                        ${staff.filter(s => s.role !== 'staff').map(s => `
-                        <div class="flex items-center justify-between wari-row" data-wari-type="staff">
-                            <span class="text-sm">${s.name} <span class="text-[10px] text-slate-500">${s.incentive_rate}%</span></span>
-                            <input class="w-1/3 min-w-0 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono text-right wari-amount amount-input" data-staff="${s.id}" data-rate="${s.incentive_rate}" placeholder="자동"/>
-                        </div>`).join('')}
-                    </div>
-                    <p class="text-[10px] text-slate-600 mt-3 mb-2 pt-3 border-t border-slate-800">아가씨</p>
-                    <div id="wari-girl-items" class="space-y-2">
-                        ${girlsList.map(g => `
-                        <div class="flex items-center justify-between wari-row" data-wari-type="girl">
-                            <span class="text-sm text-pink-400">${g.name} <span class="text-[10px] text-slate-500">${g.incentive_rate || 0}%</span></span>
-                            <input class="w-1/3 min-w-0 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono text-right wari-girl-amount amount-input" data-girl="${g.id}" data-rate="${g.incentive_rate || 0}" placeholder="자동"/>
-                        </div>`).join('')}
-                    </div>
+                <span class="text-gray-900 font-bold text-[24px]" id="form-date-display">${dateDisplay}</span>
+                <div class="flex items-center gap-2 flex-wrap ml-auto">
+                    <input id="s-date" class="bg-white border border-gray-300 rounded px-2 py-1 text-gray-900" type="date" value="${today}"/>
+                    <span class="text-gray-600">T/C</span>
+                    <input id="s-tc-unit" class="w-24 bg-white border border-gray-300 rounded px-2 py-1 font-mono text-gray-900 amount-input placeholder:text-gray-400" value="${Format.number(tcUnit)}"/>
+                    <span class="text-gray-600">시제</span>
+                    <input id="s-petty-cash" class="w-24 bg-white border border-gray-300 rounded px-2 py-1 font-mono text-gray-900 amount-input placeholder:text-gray-400" placeholder="0"/>
+                    ${isAdmin ? `<select id="s-entered-by" class="bg-white border border-gray-300 rounded px-2 py-1">
+                        <option value="">관리자</option>
+                        ${staff.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                    </select>` : ''}
+                    <button id="btn-save" class="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">저장</button>
                 </div>
+            </div>
 
-                <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                            <span class="material-symbols-outlined text-pink-400 text-xs">person</span> 아가씨 지급 (대기비/이벤트)
-                        </h3>
-                        <button id="btn-add-girl-pay" class="text-[10px] text-blue-500 font-bold">+ 추가</button>
-                    </div>
-                    <div id="girl-pay-items" class="space-y-2">
-                        <div class="girl-pay-row flex gap-2 items-center">
-                            <select class="gp-girl flex-1 bg-slate-800 border-slate-700 rounded text-xs">
-                                <option value="">선택</option>
-                                ${girlsList.map(g => `<option value="${g.id}" data-standby="${g.standby_fee || 0}" data-event="${g.event_fee || 0}">${g.name}</option>`).join('')}
-                            </select>
-                            <select class="gp-type w-20 bg-slate-800 border-slate-700 rounded text-xs">
-                                <option value="standby">대기비</option>
-                                <option value="event">이벤트</option>
-                                <option value="full_attendance">만근비</option>
-                            </select>
-                            <input class="gp-amount w-24 bg-slate-800 border-slate-700 rounded text-xs font-mono amount-input" placeholder="금액"/>
-                            <button class="btn-remove-girl-pay text-slate-600 hover:text-red-300"><span class="material-symbols-outlined text-xs">close</span></button>
-                        </div>
-                    </div>
+            <!-- 4열 그리드: 룸 카드 + 통합 카드 (빈자리) -->
+            <div class="grid grid-cols-2 xl:grid-cols-4 gap-2" id="main-grid">
+                <div id="rooms-container" style="display:contents"></div>
+                <div id="daily-summary-card" class="bg-white rounded-lg border border-gray-300 shadow-sm overflow-hidden min-w-0 h-full w-full">
+                    <table class="w-full h-full text-[10px] font-normal daily-summary-table" style="border-collapse:collapse;table-layout:fixed">
+                    <tbody>
+                        <tr>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 px-1.5 w-[15%]">주대</td>
+                            <td class="border border-gray-300 text-gray-900 text-center py-1 px-1.5 w-[20%]" id="daily-joodae">0</td>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 px-1.5 w-[15%]">T/C</td>
+                            <td class="border border-gray-300 text-gray-900 text-center py-1 px-1.5 w-[20%]" id="daily-tc">0</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 px-1.5">차용</td>
+                            <td class="border border-gray-300 text-gray-900 text-center py-1 px-1.5" id="daily-borrow">0</td>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 px-1.5">기타</td>
+                            <td class="border border-gray-300 text-gray-900 text-center py-1 px-1.5" id="daily-other">0</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 px-1.5">현금</td>
+                            <td class="border border-gray-300 text-gray-900 text-center py-1 px-1.5" id="daily-cash">0</td>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 px-1.5">카드</td>
+                            <td class="border border-gray-300 text-gray-900 text-center py-1 px-1.5" id="daily-card">0</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 px-1.5">외상</td>
+                            <td class="border border-gray-300 text-gray-900 text-center py-1 px-1.5" id="daily-credit">0</td>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 px-1.5">시제</td>
+                            <td class="border border-gray-300 text-gray-900 text-center py-1 px-1.5" id="daily-petty">0</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 px-1.5">매출</td>
+                            <td class="border border-gray-300 text-blue-600 text-center py-1 px-1.5" id="daily-revenue" colspan="3">0</td>
+                        </tr>
+                    </tbody>
+                    </table>
                 </div>
-
-                <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">기타 지출</h3>
-                        <button id="btn-add-expense" class="text-[10px] text-blue-500 font-bold">+ 추가</button>
-                    </div>
-                    <div id="expense-items" class="space-y-2">
-                        <div class="flex gap-2 expense-row min-w-0">
-                            <input class="flex-[2] min-w-0 bg-slate-800 border-slate-700 rounded-lg text-sm expense-name" placeholder="항목명"/>
-                            <input class="flex-1 min-w-0 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono expense-amount amount-input" placeholder="금액"/>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                    <label class="text-[10px] font-bold text-slate-500">전일 이월</label>
-                    <input id="s-carryover" class="w-full bg-slate-800 border-slate-700 rounded-lg font-mono text-sm amount-input mt-1" placeholder="0"/>
-                </div>
-
-                <button id="btn-save" class="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold shadow-lg transition-all">정산 저장</button>
-            </section>
-
-            <section class="lg:col-span-5">
-                <div class="sticky top-20">
-                    <h2 class="text-sm font-bold text-slate-400 mb-3">정산서 미리보기</h2>
-                    <div class="bg-[#1e293b] rounded-2xl p-4 md:p-6 shadow-2xl border border-slate-700/50 relative overflow-hidden">
-                        <div class="absolute inset-0 paper-grid opacity-20 pointer-events-none"></div>
-                        <div class="relative z-10" id="preview-content">
-                            <p class="text-slate-500 text-center py-8 text-sm">룸을 추가하면 미리보기가 표시됩니다.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            </div>
         </div>`;
 
-        await this._addRoom();
+        // 11개 룸 + 통합 카드 (빈자리 1열)
+        const preloaded = { allStaff, liquors, allGirls, staff, girlsList };
+        for (let i = 0; i < 11; i++) {
+            await this._addRoom(preloaded);
+        }
+        this._syncAllTimeInputs(container);
         this._bindFormEvents(container, staff, liquors, girlsList, allGirls, allStaff, myStaff, isAdmin);
     },
 
     async _roomHTML(idx, staff, liquors, girlsList) {
         const myStaffId = await Auth.getStaffId();
+        const girlOptions = girlsList.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+        const staffOptions = staff.map(s => `<option value="${s.id}" ${s.id === myStaffId ? 'selected' : ''}>${s.name}</option>`).join('');
+
+        const timePlaceholders = ['12:30','1:30','2:30','3:30','4:30','5:30','6:30'];
+        const timeSlots = [0,1,2,3,4,5,6];
+        const timeCells = timeSlots.map(s => `<td class="border border-gray-300 p-0 time-cell" style="width:56px;min-width:56px"><div class="time-cell-wrap relative"><input type="time" class="girl-time-${s} w-full bg-transparent border-0 text-[10px] text-gray-900 text-center p-0.5" placeholder="${timePlaceholders[s]}" style="min-width:0;width:100%"/><button type="button" class="time-clear-btn" title="지우기">×</button></div></td>`).join('');
+        const girlRows = Array.from({length: 7}, (_, i) => `
+                    <tr class="girl-row">
+                        <td class="border border-gray-300 text-center text-[10px] text-gray-600 py-0" style="width:22px">${i+1}</td>
+                        <td class="border border-gray-300 p-0" style="min-width:60px">
+                            <select class="girl-select w-full bg-transparent border-0 text-[10px] text-gray-900 py-0.5 px-0.5 h-full placeholder:text-gray-400" style="max-width:100%">
+                                <option value=""></option>
+                                ${girlOptions}
+                            </select>
+                        </td>
+                        <td class="border border-gray-300 bg-gray-50 p-0 text-center text-[10px] text-gray-600" style="width:32px"><span class="girl-row-times"></span></td>
+                        ${timeCells}
+                    </tr>`).join('');
+
         return `
-        <div class="room-card bg-slate-900 p-4 rounded-xl border border-slate-800" data-room-idx="${idx}">
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
-                    <span class="bg-blue-500/20 text-blue-400 font-bold text-xs px-2 py-1 rounded">Room</span>
-                    <input class="room-number w-14 bg-slate-800 border-slate-700 rounded text-sm text-center" placeholder="번호"/>
-                </div>
-                <button class="btn-remove-room text-slate-500 hover:text-red-300"><span class="material-symbols-outlined text-sm">close</span></button>
-            </div>
-            <div class="grid grid-cols-2 gap-2 mb-3">
-                <div><label class="text-[10px] text-slate-500">VIP (고객명)</label>
-                    <input class="room-vip w-full bg-slate-800 border-slate-700 rounded text-sm" placeholder="고객명"/></div>
-                <div><label class="text-[10px] text-slate-500">담당</label>
-                    <select class="room-staff w-full bg-slate-800 border-slate-700 rounded text-sm">
-                        <option value="">선택</option>
-                        ${staff.map(s => `<option value="${s.id}" ${s.id === myStaffId ? 'selected' : ''}>${s.name}</option>`).join('')}
-                    </select></div>
-            </div>
-
-            <div class="mb-3">
-                <div class="flex items-center justify-between mb-1">
-                    <span class="text-[10px] font-bold text-pink-400 uppercase">아가씨</span>
-                    <button class="btn-add-girl text-[10px] text-blue-500 font-bold">+ 추가</button>
-                </div>
-                <div class="room-girls space-y-1">
-                    <div class="girl-row flex flex-wrap gap-1 items-center">
-                        <select class="girl-select w-full sm:flex-1 sm:w-auto bg-slate-800 border-slate-700 rounded text-xs">
-                            <option value="">선택</option>
-                            ${girlsList.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
-                        </select>
-                        <div class="flex items-center gap-1 flex-1 min-w-0">
-                            <input type="time" class="girl-entry-time flex-1 min-w-[110px] bg-slate-800 border-slate-700 rounded text-xs px-1.5 py-1"/>
-                            <span class="text-slate-500 text-xs shrink-0">~</span>
-                            <input type="time" class="girl-exit-time flex-1 min-w-[110px] bg-slate-800 border-slate-700 rounded text-xs px-1.5 py-1"/>
-                            <span class="girl-times text-xs font-bold text-blue-400 w-6 text-center shrink-0">0</span>
-                            <button class="btn-remove-girl text-slate-600 hover:text-red-300 shrink-0"><span class="material-symbols-outlined text-xs">close</span></button>
-                        </div>
-                    </div>
-                </div>
+        <div class="room-card bg-white rounded-lg border border-gray-300 overflow-hidden shadow-sm" data-room-idx="${idx}">
+            <!-- 헤더: [Room: ___ VIP: ___ 담당: ___ ] -->
+            <div class="flex items-center gap-1 px-1.5 py-1 border-b border-gray-300 flex-wrap text-[10px] bg-gray-100">
+                <span class="text-gray-600 shrink-0">Room:</span>
+                <input class="room-number w-9 bg-white border border-gray-300 rounded text-[10px] text-gray-900 text-center py-0.5 placeholder:text-gray-400" placeholder=""/>
+                <span class="text-gray-400">|</span>
+                <span class="text-gray-600 shrink-0">VIP:</span>
+                <input class="room-vip flex-1 min-w-[45px] bg-white border border-gray-300 rounded text-[10px] text-gray-900 py-0.5 placeholder:text-gray-400" placeholder=""/>
+                <span class="text-gray-400">|</span>
+                <span class="text-gray-600 shrink-0">담당:</span>
+                <select class="room-staff bg-white border border-gray-300 rounded text-[10px] text-gray-900 py-0.5 min-w-[55px]">
+                    <option value="">-</option>
+                    ${staffOptions}
+                </select>
+                <span class="text-gray-400">|</span>
+                <button class="btn-remove-room ml-auto text-gray-500 hover:text-red-500 leading-none">&times;</button>
             </div>
 
-            <div class="mb-3">
-                <div class="flex items-center justify-between mb-1">
-                    <span class="text-[10px] font-bold text-emerald-400 uppercase">주류</span>
-                    <button class="btn-add-room-liquor text-[10px] text-blue-500 font-bold">+ 추가</button>
-                </div>
-                <div class="room-liquors space-y-1">
+            <!-- 아가씨 테이블: no | 이름 | time(열) | 0~6 (7열, 스크롤) -->
+            <div class="overflow-x-auto scroll-hide room-table-scroll" style="-webkit-overflow-scrolling:touch" title="가로 드래그로 스크롤">
+                <table style="border-collapse:collapse;width:100%;min-width:520px">
+                    <tbody class="room-girls">
+                        <tr>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-[10px] text-gray-700" style="width:22px">no</td>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-[10px] text-gray-700" style="min-width:60px">이름</td>
+                            <td class="border border-gray-300 bg-gray-100 text-center text-[10px] text-gray-700 py-0.5 px-0.5" style="width:32px">타임</td>
+                            ${[0,1,2,3,4,5,6].map(n => `<td class="border border-gray-300 bg-gray-100 text-center text-[10px] text-gray-600 py-0.5 align-middle" style="width:56px;min-width:56px">${n}</td>`).join('')}
+                        </tr>
+                        ${girlRows}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 주류: 주종 + 수량 선택 (기본 접힘) -->
+            <details class="room-liquor-details border-t border-gray-200 group">
+                <summary class="text-[10px] text-gray-900 py-1 pl-3 pr-0 cursor-pointer list-none flex items-center hover:text-gray-900 [&::-webkit-details-marker]:hidden">
+                    주류
+                </summary>
+                <div class="room-liquors space-y-0.5 mt-1 pb-1">
+                    ${Array.from({length: 5}, () => `
                     <div class="room-liquor-row flex gap-1 items-center">
-                        <select class="room-lq-select flex-1 bg-slate-800 border-slate-700 rounded text-xs">
-                            ${liquors.map(l => `<option value="${l.id}" data-price="${l.sell_price}">${l.name} (${Format.number(l.sell_price)})</option>`).join('')}
+                        <select class="room-lq-select flex-1 min-w-0 bg-white border border-gray-300 rounded text-[10px] text-gray-900 py-0.5 px-1">
+                            <option value="">주종 선택</option>
+                            ${liquors.map(l => `<option value="${l.id}" data-price="${l.sell_price}">${l.name}</option>`).join('')}
                         </select>
-                        <input class="room-lq-qty w-12 bg-slate-800 border-slate-700 rounded text-xs text-center" type="number" placeholder="수량" min="0"/>
-                        <input class="room-lq-service w-10 bg-slate-800 border-slate-700 rounded text-xs text-center" type="number" placeholder="서비스" min="0" value="0"/>
-                        <button class="btn-remove-room-liquor text-slate-600 hover:text-red-300"><span class="material-symbols-outlined text-xs">close</span></button>
-                    </div>
+                        <input class="room-lq-qty w-12 bg-white border border-gray-300 rounded text-[10px] text-gray-900 text-center py-0.5 placeholder:text-gray-400" type="number" placeholder="수량" min="0"/>
+                        <input type="hidden" class="room-lq-service" value="0"/>
+                    </div>`).join('')}
                 </div>
-            </div>
+            </details>
 
-            <div class="mb-3">
-                <span class="text-[10px] font-bold text-slate-500 uppercase block mb-1">결제</span>
-                <div class="grid grid-cols-3 gap-2">
-                    <div><label class="text-[10px] text-slate-500">현금</label><input class="room-pay-cash w-full bg-slate-800 border-slate-700 rounded text-xs font-mono amount-input" placeholder="0"/></div>
-                    <div><label class="text-[10px] text-slate-500">카드</label><input class="room-pay-card w-full bg-slate-800 border-slate-700 rounded text-xs font-mono amount-input" placeholder="0"/></div>
-                    <div><label class="text-[10px] text-slate-500">차용</label><input class="room-pay-borrow w-full bg-slate-800 border-slate-700 rounded text-xs font-mono amount-input" placeholder="0"/></div>
-                    <div><label class="text-[10px] text-slate-500">기타</label><input class="room-pay-other w-full bg-slate-800 border-slate-700 rounded text-xs font-mono amount-input" placeholder="0"/></div>
-                    <div><label class="text-[10px] text-slate-500">외상</label><input class="room-pay-credit w-full bg-slate-800 border-slate-700 rounded text-xs font-mono amount-input" placeholder="0"/></div>
-                    <div><label class="text-[10px] text-slate-500">외상 고객</label><input class="room-credit-customer w-full bg-slate-800 border-slate-700 rounded text-xs" placeholder="고객명"/></div>
-                </div>
-            </div>
-
-            <div class="bg-slate-800/50 p-2 rounded-lg grid grid-cols-3 gap-2 text-center">
-                <div><span class="text-[10px] text-slate-500">주대</span><p class="room-joodae text-xs font-bold text-white">₩0</p></div>
-                <div><span class="text-[10px] text-slate-500">T/C</span><p class="room-tc text-xs font-bold text-white">₩0</p></div>
-                <div><span class="text-[10px] text-slate-500">매출</span><p class="room-total text-xs font-bold text-blue-400">₩0</p></div>
-            </div>
+            <!-- 요약 테이블: 주대/차용/현금/외상 | T/C/기타/카드/매출 (룸 카드 내부) -->
+            <table class="text-[10px] font-normal room-summary-table" style="border-collapse:collapse;width:100%;table-layout:fixed">
+                <tbody>
+                    <tr>
+                        <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 text-[10px]" style="width:25%;min-width:32px">주대</td>
+                        <td class="border border-gray-300 px-1 py-1 text-center text-gray-900 text-[10px]"><p class="room-joodae">0</p></td>
+                        <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 text-[10px]" style="width:25%">T/C</td>
+                        <td class="border border-gray-300 px-1 py-1 text-center text-gray-900 text-[10px]" style="width:25%"><p class="room-tc">0</p></td>
+                    </tr>
+                    <tr>
+                        <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 text-[10px]">차용</td>
+                        <td class="border border-gray-300 p-0.5 text-center"><input class="room-pay-borrow w-full bg-transparent border-0 text-[10px] text-gray-900 text-center amount-input placeholder:text-gray-400" placeholder="0"/></td>
+                        <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 text-[10px]">기타</td>
+                        <td class="border border-gray-300 p-0.5 text-center"><input class="room-pay-other w-full bg-transparent border-0 text-[10px] text-gray-900 text-center amount-input placeholder:text-gray-400" placeholder="0"/></td>
+                    </tr>
+                    <tr>
+                        <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 text-[10px]">현금</td>
+                        <td class="border border-gray-300 p-0.5 text-center"><input class="room-pay-cash w-full bg-transparent border-0 text-[10px] text-gray-900 text-center amount-input placeholder:text-gray-400" placeholder="0"/></td>
+                        <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 text-[10px]">카드</td>
+                        <td class="border border-gray-300 p-0.5 text-center"><input class="room-pay-card w-full bg-transparent border-0 text-[10px] text-gray-900 text-center amount-input placeholder:text-gray-400" placeholder="0"/></td>
+                    </tr>
+                    <tr>
+                        <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 text-[10px]">외상</td>
+                        <td class="border border-gray-300 p-0.5 text-center"><input class="room-pay-credit w-full bg-transparent border-0 text-[10px] text-gray-900 text-center amount-input placeholder:text-gray-400" placeholder="0"/></td>
+                        <td class="border border-gray-300 bg-gray-100 text-center text-gray-700 py-1 text-[10px]">매출</td>
+                        <td class="border border-gray-300 px-1 py-1 text-center text-blue-600 text-[10px]"><p class="room-total">0</p></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>`;
     },
 
-    async _addRoom() {
+    async _addRoom(preloaded) {
         const isAdmin = Auth.isAdmin();
-        const allStaff = await DB.getAll('staff');
-        const liquors = await DB.getAll('liquor');
-        const allGirls = (await DB.getAll('girls')).filter(g => g.active);
+        const allStaff = preloaded ? preloaded.allStaff : await DB.getAll('staff');
+        const liquors = preloaded ? preloaded.liquors : await DB.getAll('liquor');
+        const allGirls = preloaded ? preloaded.allGirls : (await DB.getAll('girls')).filter(g => g.active);
         const myStaffId = await Auth.getStaffId();
         const myStaff = allStaff.find(s => s.id === myStaffId);
-        const staff = this._filterByBranch(allStaff, myStaff, isAdmin);
+        const staff = preloaded ? preloaded.staff : this._filterByBranch(allStaff, myStaff, isAdmin);
         const effStaff = this._getEffectiveBranchStaff(allStaff, myStaff, isAdmin);
-        const girlsList = this._filterGirlsByBranch(allGirls, allStaff, effStaff, !effStaff || !effStaff.branch_name);
+        const girlsList = preloaded ? preloaded.girlsList : this._filterGirlsByBranch(allGirls, allStaff, effStaff, !effStaff || !effStaff.branch_name);
         const idx = this.roomCounter++;
         const roomsEl = document.getElementById('rooms-container');
         if (!roomsEl) return;
@@ -786,12 +861,14 @@ const SettlementPage = {
         const tcUnit = Format.parseNumber(document.getElementById('s-tc-unit')?.value) || (await this._getTcUnit());
         let totalTimes = 0;
         roomCard.querySelectorAll('.girl-row').forEach(row => {
-            const entry = row.querySelector('.girl-entry-time')?.value;
-            const exit = row.querySelector('.girl-exit-time')?.value;
-            const times = this._calcTimes(entry, exit);
-            const el = row.querySelector('.girl-times');
-            if (el) el.textContent = times;
-            totalTimes += times;
+            const times = [0,1,2,3,4,5,6].map(slot => {
+                const input = row.querySelector(`.girl-time-${slot}`);
+                return input?.value || '';
+            });
+            const rowTimes = this._calcTimesFromSlots(times);
+            totalTimes += rowTimes;
+            const timesEl = row.querySelector('.girl-row-times');
+            if (timesEl) timesEl.textContent = rowTimes > 0 ? `${rowTimes}T` : '';
         });
 
         let joodae = 0;
@@ -832,18 +909,42 @@ const SettlementPage = {
             });
         };
         document.getElementById('btn-back-list').addEventListener('click', () => { this.mode = 'list'; App.renderPage('settlement'); });
-        document.getElementById('btn-add-room').addEventListener('click', async () => { await this._addRoom(); await this.updatePreview(); });
+
+        // 드래그 스크롤: room-table-scroll 영역에서 마우스 클릭 후 드래그
+        let dragScroll = { el: null, startX: 0, startLeft: 0 };
+        container.addEventListener('mousedown', (e) => {
+            if (e.target.closest('input, select, button')) return;
+            const el = e.target.closest('.room-table-scroll');
+            if (!el || e.button !== 0) return;
+            dragScroll = { el, startX: e.clientX, startLeft: el.scrollLeft };
+            el.style.cursor = 'grabbing';
+            el.style.userSelect = 'none';
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!dragScroll.el) return;
+            const dx = e.clientX - dragScroll.startX;
+            dragScroll.el.scrollLeft = dragScroll.startLeft - dx;
+        });
+        document.addEventListener('mouseup', () => {
+            if (dragScroll.el) {
+                dragScroll.el.style.cursor = '';
+                dragScroll.el.style.userSelect = '';
+                dragScroll.el = null;
+            }
+        });
         document.getElementById('btn-save').addEventListener('click', () => this.saveSettlement());
 
-        document.getElementById('btn-add-expense').addEventListener('click', () => {
-            const row = document.createElement('div');
-            row.className = 'flex gap-2 expense-row min-w-0';
-            row.innerHTML = `<input class="flex-[2] min-w-0 bg-slate-800 border-slate-700 rounded-lg text-sm expense-name" placeholder="항목명"/>
-                <input class="flex-1 min-w-0 bg-slate-800 border-slate-700 rounded-lg text-sm font-mono expense-amount amount-input" placeholder="금액"/>`;
-            document.getElementById('expense-items').appendChild(row);
+        // 날짜 변경 시 상단 날짜 텍스트 동기화
+        document.getElementById('s-date')?.addEventListener('change', (e) => {
+            const dayNames = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+            const d = new Date(e.target.value + 'T00:00:00');
+            const txt = `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 ${dayNames[d.getDay()]}`;
+            const el = document.getElementById('form-date-display');
+            if (el) el.textContent = txt;
         });
 
         container.addEventListener('input', async (e) => {
+            this._syncTimeInputEmptyState(e.target);
             if (e.target.classList.contains('amount-input')) {
                 const val = Format.parseNumber(e.target.value);
                 if (val) e.target.value = Format.number(val);
@@ -860,28 +961,38 @@ const SettlementPage = {
             });
         }
         container.addEventListener('change', async (e) => {
+            this._syncTimeInputEmptyState(e.target);
             const roomCard = e.target.closest('.room-card');
             if (roomCard) await this._updateRoomSummary(roomCard);
-            if (e.target.classList.contains('gp-girl') || e.target.classList.contains('gp-type')) {
-                const row = e.target.closest('.girl-pay-row');
-                if (row) {
-                    const girlSel = row.querySelector('.gp-girl');
-                    const typeSel = row.querySelector('.gp-type');
-                    const amountEl = row.querySelector('.gp-amount');
-                    if (girlSel && typeSel && amountEl) {
-                        const opt = girlSel.selectedOptions[0];
-                        const type = typeSel.value;
-                        let fee = 0;
-                        if (type === 'standby') fee = parseInt(opt?.dataset?.standby) || 0;
-                        else if (type === 'event') fee = parseInt(opt?.dataset?.event) || 0;
-                        if (fee > 0) amountEl.value = Format.number(fee);
-                    }
-                }
-            }
             await this.updatePreview();
         });
 
+        container.addEventListener('keydown', async (e) => {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && e.target.matches('input[type="time"]') && e.target.closest('#settlement-form-root')) {
+                e.target.value = '';
+                this._syncTimeInputEmptyState(e.target);
+                const roomCard = e.target.closest('.room-card');
+                if (roomCard) await this._updateRoomSummary(roomCard);
+                await this.updatePreview();
+                e.preventDefault();
+            }
+        });
+
         container.addEventListener('click', async (e) => {
+            const clearBtn = e.target.closest('.time-clear-btn');
+            if (clearBtn) {
+                const input = clearBtn.parentElement?.querySelector('input[type="time"]');
+                if (input) {
+                    input.value = '';
+                    this._syncTimeInputEmptyState(input);
+                    const roomCard = input.closest('.room-card');
+                    if (roomCard) await this._updateRoomSummary(roomCard);
+                    await this.updatePreview();
+                }
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
             const btn = e.target.closest('button');
             if (!btn) return;
 
@@ -889,69 +1000,12 @@ const SettlementPage = {
                 btn.closest('.room-card').remove();
                 await this.updatePreview();
             }
-            if (btn.classList.contains('btn-add-girl')) {
-                const filtered = getFilteredGirls();
-                const girlsEl = btn.closest('.room-card').querySelector('.room-girls');
-                const row = document.createElement('div');
-                row.className = 'girl-row flex flex-wrap gap-1 items-center';
-                row.innerHTML = `<select class="girl-select w-full sm:flex-1 sm:w-auto bg-slate-800 border-slate-700 rounded text-xs">
-                    <option value="">선택</option>${filtered.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
-                    </select>
-                    <div class="flex items-center gap-1 flex-1 min-w-0">
-                        <input type="time" class="girl-entry-time flex-1 min-w-[110px] bg-slate-800 border-slate-700 rounded text-xs px-1.5 py-1"/>
-                        <span class="text-slate-500 text-xs shrink-0">~</span>
-                        <input type="time" class="girl-exit-time flex-1 min-w-[110px] bg-slate-800 border-slate-700 rounded text-xs px-1.5 py-1"/>
-                        <span class="girl-times text-xs font-bold text-blue-400 w-6 text-center shrink-0">0</span>
-                        <button class="btn-remove-girl text-slate-600 hover:text-red-300 shrink-0"><span class="material-symbols-outlined text-xs">close</span></button>
-                    </div>`;
-                girlsEl.appendChild(row);
-            }
             if (btn.classList.contains('btn-remove-girl')) {
                 const roomCard = btn.closest('.room-card');
                 btn.closest('.girl-row').remove();
                 if (roomCard) await this._updateRoomSummary(roomCard);
                 await this.updatePreview();
             }
-            if (btn.classList.contains('btn-add-room-liquor')) {
-                const lqEl = btn.closest('.room-card').querySelector('.room-liquors');
-                const row = document.createElement('div');
-                row.className = 'room-liquor-row flex gap-1 items-center';
-                row.innerHTML = `<select class="room-lq-select flex-1 bg-slate-800 border-slate-700 rounded text-xs">
-                    ${liquors.map(l => `<option value="${l.id}" data-price="${l.sell_price}">${l.name} (${Format.number(l.sell_price)})</option>`).join('')}
-                    </select>
-                    <input class="room-lq-qty w-12 bg-slate-800 border-slate-700 rounded text-xs text-center" type="number" placeholder="수량" min="0"/>
-                    <input class="room-lq-service w-10 bg-slate-800 border-slate-700 rounded text-xs text-center" type="number" placeholder="서비스" min="0" value="0"/>
-                    <button class="btn-remove-room-liquor text-slate-600 hover:text-red-300"><span class="material-symbols-outlined text-xs">close</span></button>`;
-                lqEl.appendChild(row);
-            }
-            if (btn.classList.contains('btn-remove-room-liquor')) {
-                const roomCard = btn.closest('.room-card');
-                btn.closest('.room-liquor-row').remove();
-                if (roomCard) await this._updateRoomSummary(roomCard);
-                await this.updatePreview();
-            }
-            if (btn.classList.contains('btn-remove-girl-pay')) {
-                btn.closest('.girl-pay-row').remove();
-                await this.updatePreview();
-            }
-        });
-
-        document.getElementById('btn-add-girl-pay').addEventListener('click', () => {
-            const filtered = getFilteredGirls();
-            const row = document.createElement('div');
-            row.className = 'girl-pay-row flex gap-2 items-center';
-            row.innerHTML = `<select class="gp-girl flex-1 bg-slate-800 border-slate-700 rounded text-xs">
-                    <option value="">선택</option>
-                    ${filtered.map(g => `<option value="${g.id}" data-standby="${g.standby_fee || 0}" data-event="${g.event_fee || 0}">${g.name}</option>`).join('')}
-                </select>
-                <select class="gp-type w-20 bg-slate-800 border-slate-700 rounded text-xs">
-                    <option value="standby">대기비</option>
-                    <option value="event">이벤트</option>
-                    <option value="full_attendance">만근비</option>
-                </select>
-                <input class="gp-amount w-24 bg-slate-800 border-slate-700 rounded text-xs font-mono amount-input" placeholder="금액"/>
-                <button class="btn-remove-girl-pay text-slate-600 hover:text-red-300"><span class="material-symbols-outlined text-xs">close</span></button>`;
-            document.getElementById('girl-pay-items').appendChild(row);
         });
 
     },
@@ -987,12 +1041,13 @@ const SettlementPage = {
             card.querySelectorAll('.girl-row').forEach(row => {
                 const girlId = row.querySelector('.girl-select')?.value;
                 const girlName = row.querySelector('.girl-select')?.selectedOptions[0]?.text || '';
-                const entryTime = row.querySelector('.girl-entry-time')?.value || '';
-                const exitTime = row.querySelector('.girl-exit-time')?.value || '';
-                const times = this._calcTimes(entryTime, exitTime);
-                if (girlId || entryTime) {
-                    girls.push({ girl_id: girlId, name: girlName, entry_time: entryTime, exit_time: exitTime, times });
-                    totalTimes += times;
+                const times = this._calcTimesFromSlots([0,1,2,3,4,5,6].map(slot => row.querySelector(`.girl-time-${slot}`)?.value || ''));
+                totalTimes += times;
+                const timeStrs = [0,1,2,3,4,5,6].map(slot => row.querySelector(`.girl-time-${slot}`)?.value).filter(Boolean);
+                const entry_time = timeStrs[0] || '';
+                const exit_time = timeStrs[timeStrs.length - 1] || '';
+                if (girlId || times > 0 || timeStrs.length > 0) {
+                    girls.push({ girl_id: girlId, name: girlName, entry_time, exit_time, times });
                 }
             });
 
@@ -1138,26 +1193,52 @@ const SettlementPage = {
     async updatePreview() {
         this._autoCalcWari();
         const data = await this.getFormData();
-        const el = document.getElementById('preview-content');
-        if (!el) return;
-        el.innerHTML = this._buildSettlementHTML(data);
+        // 일일 합계 테이블 업데이트
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = Format.number(val); };
+        set('daily-joodae', data.totalJoodae || 0);
+        set('daily-tc', data.totalTc || 0);
+        set('daily-borrow', (data.roomData||[]).reduce((s,r)=>s+(r.pay_borrowing||0),0));
+        set('daily-other', (data.roomData||[]).reduce((s,r)=>s+(r.pay_other||0),0));
+        set('daily-cash', (data.roomData||[]).reduce((s,r)=>s+(r.pay_cash||0),0));
+        set('daily-card', (data.roomData||[]).reduce((s,r)=>s+(r.pay_card||0),0));
+        set('daily-credit', (data.roomData||[]).reduce((s,r)=>s+(r.pay_credit||0),0));
+        const petty = Format.parseNumber(document.getElementById('s-petty-cash')?.value);
+        set('daily-petty', petty);
+        set('daily-revenue', data.totalRevenue || 0);
     },
 
     _buildSettlementHTML(data) {
         const roomCount = data.roomData ? data.roomData.length : 0;
-        const roomsHTML = (data.roomData || []).map(r => `
-            <div class="p-3 bg-slate-800/30 rounded-lg border border-slate-700/50 mb-2">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="font-bold text-white text-sm">Room ${r.room_number || '?'} ${r.vip_name ? `· <span class="text-blue-400">${r.vip_name}</span>` : ''}</span>
-                    <span class="text-[10px] text-slate-500">${r.staff_name || ''}</span>
+        const roomsHTML = (data.roomData || []).map(r => {
+            const payCash = r.pay_cash || 0;
+            const payCard = r.pay_card || 0;
+            const payBorrow = r.pay_borrowing || 0;
+            const payCredit = r.pay_credit || 0;
+            const payOther = r.pay_other || 0;
+            return `
+            <div class="mb-3 border border-slate-700 rounded-lg overflow-hidden">
+                <div class="bg-slate-800/80 px-2 py-1.5 text-xs border-b border-slate-700">
+                    <span class="text-slate-400">Room:</span> <span class="text-white font-bold">${r.room_number || '?'}</span>
+                    <span class="text-slate-600 mx-1">|</span>
+                    <span class="text-slate-400">VIP:</span> <span class="text-blue-400">${r.vip_name || '-'}</span>
+                    <span class="text-slate-600 mx-1">|</span>
+                    <span class="text-slate-400">담당:</span> <span class="text-white">${r.staff_name || '-'}</span>
                 </div>
-                ${r.girls.length > 0 ? `<div class="mb-1">${r.girls.map(g => `<span class="text-[10px] text-pink-400 mr-2">${g.name || '?'} ${g.times}T</span>`).join('')}</div>` : ''}
-                ${r.liquor_items.length > 0 ? `<div class="mb-1">${r.liquor_items.map(l => `<span class="text-[10px] text-emerald-400 mr-2">${l.name} ×${l.qty}</span>`).join('')}</div>` : ''}
-                <div class="flex justify-between text-xs mt-1">
-                    <span class="text-slate-400">주대 ${Format.number(r.joodae)} + T/C ${Format.number(r.tc_amount)}</span>
-                    <span class="font-bold text-white">${Format.number(r.room_revenue)}</span>
-                </div>
-            </div>`).join('');
+                ${r.girls.length > 0 ? `
+                <table class="w-full text-[10px] border-collapse">
+                    <thead><tr class="bg-slate-800/60"><th class="border border-slate-700 px-1 py-0.5 text-left text-slate-500">이름</th><th class="border border-slate-700 px-1 py-0.5 text-center text-slate-500" colspan="5">Time</th></tr></thead>
+                    <tbody>${r.girls.map(g => `<tr><td class="border border-slate-700 px-1 py-0.5 text-pink-400">${g.name || '?'}</td><td class="border border-slate-700 px-1 py-0.5 text-slate-400">-</td><td class="border border-slate-700 px-1 py-0.5 text-slate-400">-</td><td class="border border-slate-700 px-1 py-0.5 text-blue-400 font-bold">${g.times}T</td><td class="border border-slate-700 px-1 py-0.5"></td><td class="border border-slate-700 px-1 py-0.5"></td></tr>`).join('')}</tbody>
+                </table>` : ''}
+                <table class="w-full text-[10px] border-collapse">
+                    <tbody>
+                        <tr><td class="border border-slate-700 bg-slate-800/50 px-2 py-1 text-slate-500 w-14">주대</td><td class="border border-slate-700 px-2 py-1 font-mono text-white">${Format.number(r.joodae)}</td><td class="border border-slate-700 bg-slate-800/50 px-2 py-1 text-slate-500 w-14">T/C</td><td class="border border-slate-700 px-2 py-1 font-mono text-white">${Format.number(r.tc_amount)}</td></tr>
+                        <tr><td class="border border-slate-700 bg-slate-800/50 px-2 py-1 text-slate-500">차용</td><td class="border border-slate-700 px-2 py-1 font-mono">${Format.number(payBorrow)}</td><td class="border border-slate-700 bg-slate-800/50 px-2 py-1 text-slate-500">기타</td><td class="border border-slate-700 px-2 py-1 font-mono">${Format.number(payOther)}</td></tr>
+                        <tr><td class="border border-slate-700 bg-slate-800/50 px-2 py-1 text-slate-500">현금</td><td class="border border-slate-700 px-2 py-1 font-mono">${Format.number(payCash)}</td><td class="border border-slate-700 bg-slate-800/50 px-2 py-1 text-slate-500">카드</td><td class="border border-slate-700 px-2 py-1 font-mono">${Format.number(payCard)}</td></tr>
+                        <tr><td class="border border-slate-700 bg-slate-800/50 px-2 py-1 text-slate-500">외상</td><td class="border border-slate-700 px-2 py-1 font-mono">${Format.number(payCredit)}</td><td class="border border-slate-700 bg-slate-800/50 px-2 py-1 text-slate-500">매출</td><td class="border border-slate-700 px-2 py-1 font-mono font-bold text-blue-400">${Format.number(r.room_revenue)}</td></tr>
+                    </tbody>
+                </table>
+            </div>`;
+        }).join('');
 
         return `
         <div class="border-b-2 border-slate-600 pb-4 mb-4">

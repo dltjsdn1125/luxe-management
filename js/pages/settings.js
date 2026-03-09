@@ -551,19 +551,50 @@ const SettingsPage = {
     // ═══════════════════════════════════════════════
     //  4. 직원 기초정보
     // ═══════════════════════════════════════════════
+    async _getStaffRoles() {
+        const raw = await this._getSetting('staff_roles');
+        if (!raw) return [
+            { key: 'president', label: '대표', order: 0 },
+            { key: 'manager', label: '매니저', order: 1 },
+            { key: 'staff', label: '스탭', order: 2 }
+        ];
+        try { return JSON.parse(raw); } catch { return [{ key: 'president', label: '대표', order: 0 }, { key: 'manager', label: '매니저', order: 1 }, { key: 'staff', label: '스탭', order: 2 }]; }
+    },
+
     async _renderStaffBase(el) {
-        const fb = this.filterBranch;
+        const isAdmin = Auth.isAdmin();
         let staff = await DB.getAll('staff');
-        if (fb) staff = staff.filter(s => s.branch_name === fb);
+        let fb = '';
+        if (!isAdmin) {
+            const staffId = await Auth.getStaffId();
+            const myStaff = staff.find(s => s.id === staffId);
+            fb = myStaff?.branch_name || '';
+            if (fb) staff = staff.filter(s => s.branch_name === fb);
+            else staff = [];
+        } else if (this.filterBranch) {
+            fb = this.filterBranch;
+            staff = staff.filter(s => s.branch_name === fb);
+        }
+        const roles = await this._getStaffRoles();
+        const rolesSorted = [...roles].sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
         const branchFilterHtml = await this._renderBranchFilter();
+        const branches = await this._getBranches();
+        const branchOptions = branches.map(b => `<option value="${b.name}" ${b.name === fb ? 'selected' : ''}>${b.name}</option>`).join('');
+        const branchFieldHtml = fb
+            ? (isAdmin ? `<select id="ns-branch" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm"><option value="">선택</option>${branchOptions}</select>` : `<input id="ns-branch" type="hidden" value="${fb}"/><span class="text-sm text-slate-300">${fb}</span>`)
+            : `<select id="ns-branch" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm"><option value="">선택</option>${branchOptions}</select>`;
+        const branchFieldLabel = fb && !isAdmin ? `<span class="text-xs text-slate-500">소속 지점 (고정)</span>` : `<label class="text-xs font-medium text-slate-400">소속 지점</label>`;
 
         el.innerHTML = `
         <div class="space-y-4">
             <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0">
                     <h2 class="text-lg font-bold text-white">직원 기초정보</h2>
-                    <p class="text-xs text-slate-500 mt-1">직원별 소속 지점, 급여, 급여일, 인센티브율 등 기초 정보를 일괄 관리합니다.</p>
+                    <p class="text-xs text-slate-500 mt-1">직원별 소속 지점, 급여, 급여일, 인센티브율 등 기초 정보를 일괄 관리합니다.${!isAdmin ? ' (본인 지점만 표시)' : ''}</p>
                 </div>
+                <button id="btn-manage-roles" class="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 hover:bg-slate-700 transition-colors">
+                    <span class="material-symbols-outlined text-sm">badge</span> 직급 관리
+                </button>
             </div>
 
             ${branchFilterHtml}
@@ -588,12 +619,10 @@ const SettingsPage = {
                                 return `
                                 <tr class="hover:bg-slate-800/30" data-sid="${s.id}">
                                     <td class="px-3 py-2 text-white font-medium">${s.name}</td>
-                                    <td class="px-3 py-2"><input class="stf-branch w-28 bg-slate-800 border-slate-700 rounded text-xs" value="${s.branch_name || ''}"/></td>
+                                    <td class="px-3 py-2">${isAdmin ? `<input class="stf-branch w-28 bg-slate-800 border-slate-700 rounded text-xs" value="${s.branch_name || ''}"/>` : `<span class="text-xs text-slate-400">${s.branch_name || '-'}</span>`}</td>
                                     <td class="px-3 py-2 text-center">
                                         <select class="stf-role bg-slate-800 border-slate-700 rounded text-xs">
-                                            <option value="president" ${s.role === 'president' ? 'selected' : ''}>대표</option>
-                                            <option value="manager" ${s.role === 'manager' ? 'selected' : ''}>매니저</option>
-                                            <option value="staff" ${s.role === 'staff' ? 'selected' : ''}>스탭</option>
+                                            ${rolesSorted.map(r => `<option value="${r.key}" ${s.role === r.key ? 'selected' : ''}>${r.label}</option>`).join('')}
                                         </select>
                                     </td>
                                     <td class="px-3 py-2 text-right"><input class="stf-salary w-24 bg-slate-800 border-slate-700 rounded text-xs text-right font-mono" type="number" value="${s.salary || 0}"/></td>
@@ -601,7 +630,8 @@ const SettingsPage = {
                                     <td class="px-3 py-2 text-center"><div class="flex items-center justify-center gap-1"><input class="stf-rate w-14 bg-slate-800 border-slate-700 rounded text-xs text-center" type="number" min="0" max="100" value="${s.incentive_rate || 0}"/><span class="text-[10px] text-slate-500">%</span></div></td>
                                     <td class="px-3 py-2 text-xs text-slate-400 font-mono">${s.hire_date || '-'}</td>
                                     <td class="px-3 py-2 text-right">
-                                        <button class="text-slate-400 hover:text-red-300 text-xs whitespace-nowrap" data-del-staff="${s.id}">삭제</button>
+                                        <button class="text-slate-400 hover:text-blue-400 text-xs whitespace-nowrap mr-2" data-edit-staff="${s.id}" title="수정">수정</button>
+                                        ${isAdmin ? `<button class="text-slate-400 hover:text-red-300 text-xs whitespace-nowrap" data-del-staff="${s.id}">삭제</button>` : ''}
                                     </td>
                                 </tr>`;
                             }).join('')}
@@ -612,30 +642,35 @@ const SettingsPage = {
             </div>
 
             <div class="flex justify-between">
-                <button id="btn-add-staff-base" class="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm whitespace-nowrap shrink-0 hover:bg-slate-700 transition-colors">
-                    <span class="material-symbols-outlined text-sm">person_add</span> 추가
-                </button>
+                ${(!isAdmin && !fb) ? '<div></div>' : `<button id="btn-add-staff-base" class="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm whitespace-nowrap shrink-0 hover:bg-slate-700 transition-colors">
+                    <span class="material-symbols-outlined text-sm">person_add</span> 직원 추가
+                </button>`}
                 <button id="btn-save-staff-base" class="flex items-center gap-2 px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-bold transition-colors">
                     <span class="material-symbols-outlined text-sm">save</span> 일괄 저장
                 </button>
             </div>
         </div>`;
 
-        this._bindBranchFilter(el);
         document.getElementById('btn-save-staff-base')?.addEventListener('click', async () => {
             const rows = el.querySelectorAll('tr[data-sid]');
             for (const row of rows) {
                 const id = row.dataset.sid;
-                await DB.update('staff', id, {
-                    branch_name: row.querySelector('.stf-branch').value.trim(),
+                const data = {
                     role: row.querySelector('.stf-role').value,
                     salary: parseInt(row.querySelector('.stf-salary').value) || 0,
                     pay_date: parseInt(row.querySelector('.stf-payday').value) || 25,
                     incentive_rate: parseFloat(row.querySelector('.stf-rate').value) || 0,
-                });
+                };
+                if (isAdmin) {
+                    const branchEl = row.querySelector('.stf-branch');
+                    if (branchEl) data.branch_name = branchEl.value.trim();
+                }
+                await DB.update('staff', id, data);
             }
             DB.notifyChange(); App.toast('직원 정보가 저장되었습니다.', 'success');
         });
+
+        document.getElementById('btn-manage-roles')?.addEventListener('click', () => this._showStaffRolesModal());
 
         document.getElementById('btn-add-staff-base')?.addEventListener('click', () => {
             App.showModal('직원 추가', `
@@ -643,11 +678,11 @@ const SettingsPage = {
                     <div class="space-y-2"><label class="text-xs font-medium text-slate-400">이름 *</label>
                         <input id="ns-name" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm" placeholder="홍길동"/></div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-2"><label class="text-xs font-medium text-slate-400">소속 지점</label>
-                            <input id="ns-branch" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm" placeholder="강남 본점"/></div>
+                        <div class="space-y-2">${branchFieldLabel}
+                            ${branchFieldHtml}</div>
                         <div class="space-y-2"><label class="text-xs font-medium text-slate-400">직급</label>
                             <select id="ns-role" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm">
-                                <option value="manager">매니저</option><option value="staff">스탭</option><option value="president">대표</option>
+                                ${rolesSorted.map(r => `<option value="${r.key}">${r.label}</option>`).join('')}
                             </select></div>
                     </div>
                     <div class="grid grid-cols-3 gap-4">
@@ -664,7 +699,11 @@ const SettingsPage = {
             `, async () => {
                 const name = document.getElementById('ns-name').value.trim();
                 if (!name) { App.toast('이름을 입력해주세요.', 'error'); return; }
-                const newStaff = await DB.insert('staff', { name, branch_name: document.getElementById('ns-branch').value.trim(),
+                const brEl = document.getElementById('ns-branch');
+                const branchName = brEl?.value?.trim() || '';
+                if (!branchName && isAdmin) { App.toast('소속 지점을 선택해주세요.', 'error'); return; }
+                if (!branchName && !isAdmin) { App.toast('소속 지점을 확인할 수 없습니다.', 'error'); return; }
+                const newStaff = await DB.insert('staff', { name, branch_name: branchName.trim(),
                     role: document.getElementById('ns-role').value, salary: parseInt(document.getElementById('ns-salary').value) || 0,
                     pay_date: parseInt(document.getElementById('ns-payday').value) || 25,
                     incentive_rate: parseFloat(document.getElementById('ns-rate').value) || 15,
@@ -674,9 +713,113 @@ const SettingsPage = {
             });
         });
 
+        el.querySelectorAll('[data-edit-staff]').forEach(btn => btn.addEventListener('click', () => {
+            const sid = btn.dataset.editStaff;
+            const s = staff.find(x => x.id === sid);
+            if (s) this._showStaffEditModal(s, rolesSorted, isAdmin, branches);
+        }));
         el.querySelectorAll('[data-del-staff]').forEach(btn => btn.addEventListener('click', async () => {
             if (confirm('이 직원을 삭제하시겠습니까?')) { await DB.delete('staff', btn.dataset.delStaff); DB.notifyChange(); App.renderPage('settings'); }
         }));
+        this._bindBranchFilter(el);
+    },
+
+    async _showStaffEditModal(staff, rolesSorted, isAdmin, branches) {
+        const branchOpts = branches.map(b => `<option value="${b.name}" ${b.name === (staff.branch_name || '') ? 'selected' : ''}>${b.name}</option>`).join('');
+        App.showModal('직원 수정', `
+            <div class="space-y-4">
+                <div class="space-y-2"><label class="text-xs font-medium text-slate-400">이름 *</label>
+                    <input id="es-name" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm" value="${staff.name || ''}" placeholder="홍길동"/></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2"><label class="text-xs font-medium text-slate-400">소속 지점</label>
+                        ${isAdmin ? `<select id="es-branch" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm"><option value="">선택</option>${branchOpts}</select>` : `<input type="hidden" id="es-branch" value="${staff.branch_name || ''}"/><span class="text-sm text-slate-300">${staff.branch_name || '-'}</span>`}</div>
+                    <div class="space-y-2"><label class="text-xs font-medium text-slate-400">직급</label>
+                        <select id="es-role" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm">
+                            ${rolesSorted.map(r => `<option value="${r.key}" ${staff.role === r.key ? 'selected' : ''}>${r.label}</option>`).join('')}
+                        </select></div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="space-y-2"><label class="text-xs font-medium text-slate-400">월급여</label>
+                        <input id="es-salary" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm font-mono" type="number" value="${staff.salary || 0}"/></div>
+                    <div class="space-y-2"><label class="text-xs font-medium text-slate-400">급여일</label>
+                        <input id="es-payday" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm" type="number" min="1" max="31" value="${staff.pay_date || 25}"/></div>
+                    <div class="space-y-2"><label class="text-xs font-medium text-slate-400">인센티브(%)</label>
+                        <input id="es-rate" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm" type="number" min="0" max="100" value="${staff.incentive_rate || 0}"/></div>
+                </div>
+                <div class="space-y-2"><label class="text-xs font-medium text-slate-400">입사일</label>
+                    <input id="es-hire" class="w-full bg-slate-800 border-slate-700 rounded-lg text-sm" type="date" value="${staff.hire_date || ''}"/></div>
+            </div>
+        `, async () => {
+            const name = document.getElementById('es-name').value.trim();
+            if (!name) { App.toast('이름을 입력해주세요.', 'error'); return; }
+            const brEl = document.getElementById('es-branch');
+            const branchName = brEl?.value?.trim() || staff.branch_name || '';
+            await DB.update('staff', staff.id, {
+                name, branch_name: branchName,
+                role: document.getElementById('es-role').value,
+                salary: parseInt(document.getElementById('es-salary').value) || 0,
+                pay_date: parseInt(document.getElementById('es-payday').value) || 25,
+                incentive_rate: parseFloat(document.getElementById('es-rate').value) || 0,
+                hire_date: document.getElementById('es-hire').value || null
+            });
+            DB.notifyChange();
+            App.toast('직원 정보가 수정되었습니다.', 'success');
+            App.renderPage('settings');
+        });
+    },
+
+    async _showStaffRolesModal() {
+        const roles = await this._getStaffRoles();
+        const rolesSorted = [...roles].sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+        App.showModal('직급 관리', `
+            <p class="text-xs text-slate-500 mb-4">직급을 추가·수정·삭제할 수 있습니다. 직원 기초정보에서 선택 가능한 직급 목록입니다.</p>
+            <div class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar mb-4" id="roles-list">
+                ${rolesSorted.map((r, i) => `
+                <div class="flex items-center gap-3 p-2 bg-slate-800/50 rounded-lg" data-role-key="${r.key}">
+                    <input class="role-key flex-1 min-w-0 bg-slate-800 border-slate-700 rounded text-xs py-1.5 px-2" value="${r.key}" placeholder="키 (영문)"/>
+                    <input class="role-label flex-1 min-w-0 bg-slate-800 border-slate-700 rounded text-xs py-1.5 px-2" value="${r.label}" placeholder="표시명"/>
+                    <input class="role-order w-14 bg-slate-800 border-slate-700 rounded text-xs py-1.5 px-2 text-center" type="number" min="0" value="${r.order ?? i}"/>
+                    <button class="text-slate-500 hover:text-red-300 role-remove" data-key="${r.key}"><span class="material-symbols-outlined text-sm">delete</span></button>
+                </div>`).join('')}
+            </div>
+            <div class="flex gap-2">
+                <button id="btn-add-role" class="flex items-center gap-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs hover:bg-slate-700">
+                    <span class="material-symbols-outlined text-sm">add</span> 직급 추가
+                </button>
+                <button id="btn-save-roles" class="flex items-center gap-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-bold">저장</button>
+            </div>
+        `, () => document.getElementById('app-modal')?.classList.add('hidden'));
+        const listEl = document.getElementById('roles-list');
+        const addRole = () => {
+            const key = 'role_' + Date.now();
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-3 p-2 bg-slate-800/50 rounded-lg';
+            div.dataset.roleKey = key;
+            div.innerHTML = `
+                <input class="role-key flex-1 min-w-0 bg-slate-800 border-slate-700 rounded text-xs py-1.5 px-2" value="${key}" placeholder="키 (영문)"/>
+                <input class="role-label flex-1 min-w-0 bg-slate-800 border-slate-700 rounded text-xs py-1.5 px-2" value="" placeholder="표시명"/>
+                <input class="role-order w-14 bg-slate-800 border-slate-700 rounded text-xs py-1.5 px-2 text-center" type="number" min="0" value="99"/>
+                <button class="text-slate-500 hover:text-red-300 role-remove" data-key="${key}"><span class="material-symbols-outlined text-sm">delete</span></button>
+            `;
+            listEl.appendChild(div);
+            div.querySelector('.role-remove').addEventListener('click', () => div.remove());
+        };
+        document.getElementById('btn-add-role')?.addEventListener('click', addRole);
+        listEl.querySelectorAll('.role-remove').forEach(btn => btn.addEventListener('click', () => btn.closest('[data-role-key]')?.remove()));
+        document.getElementById('btn-save-roles')?.addEventListener('click', async () => {
+            const items = [];
+            listEl.querySelectorAll('[data-role-key]').forEach((row, i) => {
+                const key = row.querySelector('.role-key')?.value?.trim();
+                const label = row.querySelector('.role-label')?.value?.trim();
+                if (key && label) items.push({ key, label, order: parseInt(row.querySelector('.role-order')?.value) ?? i });
+            });
+            if (items.length === 0) { App.toast('최소 1개의 직급이 필요합니다.', 'error'); return; }
+            await this._saveSetting('staff_roles', JSON.stringify(items));
+            DB.notifyChange();
+            document.getElementById('app-modal')?.classList.add('hidden');
+            App.toast('직급이 저장되었습니다.', 'success');
+            App.renderPage('settings');
+        });
     },
 
     // ═══════════════════════════════════════════════

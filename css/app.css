@@ -18,6 +18,7 @@ body {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
 .scroll-hide::-webkit-scrollbar { display: none; }
+.scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* Glass card */
 .glass-card {
@@ -256,6 +257,126 @@ table {
         font-size: clamp(0.65rem, 4vw, 0.9rem);
     }
 }
+/* 정산 입력 폼: 굵은 폰트 없이 통일, 테이블 정렬 일치 */
+#settlement-form-root {
+    font-weight: 400;
+}
+#settlement-form-root table td,
+#settlement-form-root table th {
+    font-weight: 400;
+    text-align: center;
+}
+#settlement-form-root table {
+    table-layout: fixed;
+    width: 100%;
+}
+#settlement-form-root table td,
+#settlement-form-root table th {
+    min-width: 32px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-sizing: border-box;
+}
+#settlement-form-root #daily-summary-card {
+    height: 100%;
+    width: 100%;
+}
+#settlement-form-root .room-summary-table {
+    container-type: inline-size;
+}
+#settlement-form-root .room-summary-table td,
+#settlement-form-root .room-summary-table td p,
+#settlement-form-root .room-summary-table td input {
+    font-size: clamp(9px, 4cqi, 12px);
+    font-weight: 400;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+#settlement-form-root .daily-summary-table td {
+    font-size: 12px;
+    font-weight: 400;
+    padding-left: 6px;
+    padding-right: 6px;
+}
+#settlement-form-root .room-summary-table tr {
+    height: 40px;
+}
+#settlement-form-root .room-summary-table td {
+    vertical-align: middle;
+}
+#settlement-form-root input,
+#settlement-form-root select {
+    color: #111827 !important; /* gray-900 */
+}
+#settlement-form-root input::placeholder,
+#settlement-form-root input::-webkit-input-placeholder,
+#settlement-form-root input::-moz-placeholder {
+    color: #9ca3af !important; /* gray-400 연한 회색 */
+}
+#settlement-form-root input[type="time"] {
+    position: relative;
+}
+#settlement-form-root input[type="time"]::-webkit-datetime-edit-ampm-field {
+    display: none;
+}
+#settlement-form-root input[type="time"]::-webkit-datetime-edit,
+#settlement-form-root input[type="time"]::-webkit-datetime-edit-hour-field,
+#settlement-form-root input[type="time"]::-webkit-datetime-edit-minute-field {
+    text-decoration: none;
+}
+/* 빈 time input의 브라우저 기본 --:-- placeholder 숨김 (JS로 data-empty 토글) */
+#settlement-form-root input[type="time"][data-empty="true"]::-webkit-datetime-edit {
+    color: transparent !important;
+}
+#settlement-form-root .room-table-scroll {
+    cursor: grab;
+}
+#settlement-form-root .time-cell {
+    overflow: visible;
+}
+#settlement-form-root .time-cell-wrap {
+    position: relative;
+}
+#settlement-form-root .time-clear-btn {
+    display: none;
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    font-size: 12px;
+    line-height: 1;
+    color: #6b7280;
+    background: rgba(0,0,0,0.06);
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+}
+#settlement-form-root .time-clear-btn:hover {
+    color: #ef4444;
+    background: rgba(239,68,68,0.15);
+}
+#settlement-form-root .time-cell-wrap:has(input[data-empty="false"]) .time-clear-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#settlement-form-root .time-cell input[type="time"] {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px;
+}
+#settlement-form-root input[type="time"]::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    cursor: pointer;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
 /* 마감현황 카드 내 금액 텍스트 */
 .closure-revenue {
     font-size: clamp(0.6rem, 2.8vw, 0.75rem);

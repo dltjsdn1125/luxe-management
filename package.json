@@ -4,6 +4,11 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
-    "playwright": "^1.58.2"
+    "playwright": "^1.58.2",
+    "xlsx": "^0.18.5"
+  },
+  "scripts": {
+    "excel-to-json": "node scripts/excel-to-json.mjs",
+    "dev": "npx serve . -p 8080"
   }
 }
