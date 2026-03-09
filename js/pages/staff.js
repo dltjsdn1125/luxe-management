@@ -334,7 +334,7 @@ const StaffPage = {
                             ${sorted.length > 0 ? sorted.map(s => `
                             <tr class="hover:bg-slate-800/30 transition-colors" data-staff-id="${s.id}">
                                 <td class="px-4 py-3">
-                                    ${isAdmin ? `<select class="stf-role-select bg-slate-800 border-slate-700 rounded text-xs py-1 px-2 ${roleColorClass(s.role)}" data-sid="${s.id}">${roleOptionsFor(s.role)}</select>` : `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${roleColorClass(s.role)}">${roleLabel(s.role)}</span>`}
+                                    <select class="stf-role-select bg-slate-800 border-slate-700 rounded text-xs py-1 px-2 ${roleColorClass(s.role)}" data-sid="${s.id}">${roleOptionsFor(s.role)}</select>
                                 </td>
                                 <td class="px-4 py-3">
                                     <div class="font-semibold text-white">${s.name}</div>
