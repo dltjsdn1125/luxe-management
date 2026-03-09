@@ -1,0 +1,27 @@
+{
+  "branchDailySettlement": {
+    "headerRowCount": 1,
+    "headerCells": [
+      {"label": "지점 / 직원", "colSpan": 1, "rowSpan": 1},
+      {"label": "총 매출", "colSpan": 1, "rowSpan": 1},
+      {"label": "와리", "colSpan": 1, "rowSpan": 1},
+      {"label": "아가씨", "colSpan": 1, "rowSpan": 1},
+      {"label": "지출", "colSpan": 1, "rowSpan": 1},
+      {"label": "순이익", "colSpan": 1, "rowSpan": 1},
+      {"label": "이익률", "colSpan": 1, "rowSpan": 1},
+      {"label": "정산금", "colSpan": 1, "rowSpan": 1},
+      {"label": "비중", "colSpan": 1, "rowSpan": 1}
+    ],
+    "columns": [
+      {"key": "branch", "label": "지점 / 직원", "align": "left"},
+      {"key": "revenue", "label": "총 매출", "align": "right"},
+      {"key": "wari", "label": "와리", "align": "right"},
+      {"key": "girlPay", "label": "아가씨", "align": "right"},
+      {"key": "expenses", "label": "지출", "align": "right"},
+      {"key": "netProfit", "label": "순이익", "align": "right"},
+      {"key": "margin", "label": "이익률", "align": "right"},
+      {"key": "settlement", "label": "정산금", "align": "right"},
+      {"key": "share", "label": "비중", "align": "right"}
+    ]
+  }
+}

@@ -167,7 +167,7 @@ const MonthlySettlementPage = {
             </div>
 
             <!-- 전체 요약 카드 -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
                     <div class="flex items-center gap-2 mb-2">
                         <div class="p-1.5 bg-blue-500/10 rounded-lg"><span class="material-symbols-outlined text-blue-400 text-base">payments</span></div>
