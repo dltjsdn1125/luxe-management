@@ -47,9 +47,12 @@ body {
 }
 
 /* 모바일/태블릿: 정산 룸 카드 무조건 1열 */
-@media (max-width: 1279px) {
-    #main-grid {
-        grid-template-columns: 1fr !important;
+#settlement-form-root #main-grid {
+    grid-template-columns: 1fr !important;
+}
+@media (min-width: 1280px) {
+    #settlement-form-root #main-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     }
 }
 
