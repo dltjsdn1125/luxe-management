@@ -31,6 +31,7 @@ const SETTLEMENT_TABLE_DEFAULT = {
 const SettlementPage = {
     mode: 'list',
     editId: null,
+    attendanceSheetDate: null,  // 출근표 전용 페이지용 날짜
     filterBranch: null,
     periodType: 'today',
     customFrom: null,
@@ -152,6 +153,7 @@ const SettlementPage = {
     async render(container) {
         if (this.mode === 'form') await this.renderForm(container);
         else if (this.mode === 'view') await this.renderView(container);
+        else if (this.mode === 'attendance_sheet') await this.renderAttendanceSheetPage(container);
         else await this.renderList(container);
     },
 
@@ -304,6 +306,17 @@ const SettlementPage = {
             </div>
 
             ${PeriodFilter.renderUI(this.periodType, this.customFrom, this.customTo, 'st')}
+
+            <!-- 출근표 및 재고 바로가기 (목록 최상단) -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4">
+                <h3 class="font-bold text-sm text-white mb-2 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-blue-400">table_chart</span> 출근표 및 재고
+                </h3>
+                <p class="text-xs text-slate-500 mb-3">해당 날짜 정산의 출근·직원 맡긴 돈·술 재고를 엑셀과 동일한 양식으로 확인합니다.</p>
+                <button type="button" id="btn-attendance-today" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-bold transition-colors">
+                    오늘 출근표 및 재고 보기
+                </button>
+            </div>
 
             ${isAdmin ? `<div class="flex flex-wrap gap-2 items-center">
                 <button class="st-branch-filter px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!this.filterBranch ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}" data-branch="">전체</button>
@@ -459,6 +472,14 @@ const SettlementPage = {
         document.getElementById('btn-new-settlement').addEventListener('click', () => {
             this.mode = 'form'; this.editId = null; this.roomCounter = 0; App.renderPage('settlement');
         });
+        const btnAttendanceToday = document.getElementById('btn-attendance-today');
+        if (btnAttendanceToday) {
+            btnAttendanceToday.addEventListener('click', () => {
+                this.mode = 'attendance_sheet';
+                this.attendanceSheetDate = Format.today();
+                App.renderPage('settlement');
+            });
+        }
         document.getElementById('btn-export-settlement').addEventListener('click', () => {
             ExcelExport.exportSettlements(settlements, staff);
         });
@@ -1406,6 +1427,369 @@ const SettlementPage = {
         App.renderPage('settlement');
     },
 
+    /** 출근표 및 재고 전용 페이지 (엑셀 출근표 및 재고.xlsx 100% 동일) */
+    async renderAttendanceSheetPage(container) {
+        const date = this.attendanceSheetDate || Format.today();
+        const staff = await DB.getAll('staff');
+        const myStaffId = await Auth.getStaffId();
+        const myStaff = staff.find(s => s.id === myStaffId);
+        const staffIds = !Auth.isAdmin() && myStaff?.branch_name
+            ? staff.filter(s => s.branch_name === myStaff.branch_name).map(s => s.id)
+            : null;
+
+        const { data: salesData } = await window._supabase.from('daily_sales').select('*').eq('_deleted', false).eq('date', date);
+        const sales = salesData || [];
+        const sale = staffIds
+            ? sales.find(s => staffIds.includes(s.entered_by)) || sales[0]
+            : sales[0];
+        const saleRooms = sale ? await DB.getSaleRooms(sale.id) : [];
+        const enteredBy = sale?.entered_by ? staff.find(s => s.id === sale.entered_by) : myStaff;
+
+        const sheetHTML = await this._renderAttendanceSheet(
+            sale || { date, entered_by: myStaffId },
+            saleRooms,
+            staff,
+            enteredBy || myStaff
+        );
+
+        const dayNames = ['일','월','화','수','목','금','토'];
+        const d = new Date(date + 'T00:00:00');
+        const dateDisplay = `${date} (${dayNames[d.getDay()]})`;
+
+        container.innerHTML = `
+        <div class="w-full max-w-[1200px] mx-auto p-4 md:p-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                <div class="flex items-center gap-3">
+                    <button id="btn-back-attendance" class="p-2 hover:bg-slate-800 rounded-lg">
+                        <span class="material-symbols-outlined text-slate-400">arrow_back</span>
+                    </button>
+                    <div>
+                        <h1 class="text-xl font-bold text-white">출근표 및 재고</h1>
+                        <p class="text-xs text-slate-500">엑셀 양식과 동일</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input id="att-sheet-date" type="date" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" value="${date}"/>
+                    <button id="btn-apply-date" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-bold">적용</button>
+                </div>
+            </div>
+            <div class="attendance-sheet-wrapper overflow-x-auto -mx-2 sm:mx-0">
+                ${sheetHTML}
+            </div>
+        </div>`;
+
+        document.getElementById('btn-back-attendance').addEventListener('click', () => {
+            this.mode = 'list';
+            App.renderPage('settlement');
+        });
+        document.getElementById('btn-apply-date').addEventListener('click', () => {
+            this.attendanceSheetDate = document.getElementById('att-sheet-date').value;
+            App.renderPage('settlement');
+        });
+
+        // 셀별 기능: 출근표 합계 자동 계산, 술 재고 계 자동 계산, 체크박스↔girl_payments 양방향 연동
+        const root = document.getElementById('att-sheet-root');
+        if (root) {
+            root.addEventListener('change', async (e) => {
+                const t = e.target;
+                const att = t.dataset?.att || '';
+                if (!att.startsWith('att-check-')) return;
+                const girlId = t.dataset?.girlId || '';
+                const date = t.dataset?.date || document.getElementById('att-sheet-date')?.value;
+                const row = parseInt(t.dataset?.row, 10);
+                if (!date) return;
+                const girls = await DB.getAll('girls');
+                let resolvedGirlId = girlId;
+                let girl = girls.find(x => x.id === resolvedGirlId);
+                if (!resolvedGirlId || !girl) {
+                    const nameInp = root.querySelector(`input[data-att="att-name-${row}"]`);
+                    const nameVal = (nameInp?.value || '').trim();
+                    if (!nameVal) {
+                        t.checked = false;
+                        App.toast('이름을 입력한 뒤 출근 체크해주세요.', 'error');
+                        return;
+                    }
+                    girl = girls.find(x => (x.name || '').trim() === nameVal);
+                    if (!girl) {
+                        t.checked = false;
+                        App.toast('등록된 직원을 찾을 수 없습니다: ' + nameVal, 'error');
+                        return;
+                    }
+                    resolvedGirlId = girl.id;
+                    t.dataset.girlId = resolvedGirlId;
+                }
+                const standbyFee = girl?.standby_fee || 150000;
+                const enteredById = enteredBy?.id || myStaffId;
+
+                if (t.checked) {
+                    const result = await DB.insert('girl_payments', {
+                        girl_id: resolvedGirlId,
+                        date,
+                        type: 'standby',
+                        amount: standbyFee,
+                        memo: '출근표',
+                        entered_by: enteredById
+                    });
+                    if (result) {
+                        App.toast((girl?.name || '') + ' 출근 저장 (직원관리 출근표와 동기화)', 'success');
+                    } else {
+                        t.checked = false;
+                        App.toast('저장에 실패했습니다.', 'error');
+                    }
+                } else {
+                    const { data: payData } = await window._supabase
+                        .from('girl_payments')
+                        .select('id')
+                        .eq('_deleted', false)
+                        .eq('girl_id', resolvedGirlId)
+                        .eq('date', date)
+                        .eq('type', 'standby')
+                        .limit(1);
+                    const existing = payData?.[0];
+                    if (existing) {
+                        await DB.delete('girl_payments', existing.id);
+                        App.toast((girl?.name || '') + ' 출근 취소 (직원관리 출근표와 동기화)', 'success');
+                    } else {
+                        t.checked = true;
+                        App.toast('취소할 출근 기록을 찾을 수 없습니다.', 'error');
+                    }
+                }
+            });
+            root.addEventListener('input', (e) => {
+                const t = e.target;
+                const att = t.dataset.att || '';
+                // 출근표 룸1~7 변경 → 합계(계/합계) 업데이트
+                if (att.startsWith('att-room-')) {
+                    const row = parseInt(t.dataset.row, 10);
+                    const tr = t.closest('tr');
+                    if (!tr || isNaN(row)) return;
+                    const inputs = [1,2,3,4,5,6,7].map(c => tr.querySelector(`input[data-att="att-room-${row}-${c}"]`));
+                    const sum = inputs.reduce((a, inp) => a + (parseInt(inp?.value, 10) || 0), 0);
+                    tr.querySelectorAll('.att-sum-row[data-row="' + row + '"]').forEach(cell => { cell.textContent = sum || ''; });
+                }
+                // 술 재고 입고/출고 변경 → 계 자동 반영 (계 = 이전잔량 + 입 - 출)
+                if (att.startsWith('liq-in-') || att.startsWith('liq-out-')) {
+                    const row = t.closest('tr');
+                    if (!row) return;
+                    const item = t.dataset.item;
+                    const m = att.match(/liq-(?:in|out)-(L|R)-(\d+)/);
+                    if (!m) return;
+                    const inInp = row.querySelector(`input[data-att="liq-in-${m[1]}-${m[2]}"]`);
+                    const outInp = row.querySelector(`input[data-att="liq-out-${m[1]}-${m[2]}"]`);
+                    const balCell = Array.from(row.querySelectorAll('td.att-liq-bal')).find(c => c.dataset.item === item);
+                    if (!balCell || !inInp || !outInp) return;
+                    const prev = parseFloat(balCell.dataset.prev || '0');
+                    const inV = parseFloat(inInp.value) || 0;
+                    const outV = parseFloat(outInp.value) || 0;
+                    balCell.textContent = prev + inV - outV;
+                }
+            });
+        }
+    },
+
+    async _getAttendanceSheetStructure() {
+        try {
+            const r = await fetch('data/attendance-sheet-structure.json');
+            if (r.ok) return await r.json();
+        } catch (_) {}
+        return null;
+    },
+
+    /** 출근표 및 재고 시트 HTML (엑셀 출근표 및 재고.xlsx와 100% 동일 레이아웃) */
+    async _renderAttendanceSheet(sale, saleRooms, staff, enteredBy) {
+        const structure = await this._getAttendanceSheetStructure();
+        const headers = structure?.headers || {};
+        const h = (key, fallback) => (headers[key] && headers[key].length ? headers[key] : fallback);
+
+        const date = sale.date;
+        const branchName = enteredBy?.branch_name || '';
+
+        // 출근표: 룸별 아가씨 → 행별(이름) × 열(룸1~7) 매트릭스 (직원관리 출근표와 girl_payments 연동)
+        const girls = await DB.getAll('girls');
+        const girlRoomMatrix = {};
+        const girlOrder = [];
+        const roomOrder = [];
+        (saleRooms || []).forEach((r, idx) => {
+            const rn = parseInt(r.room_number, 10) || (idx + 1);
+            if (!roomOrder.includes(rn)) roomOrder.push(rn);
+            const col = Math.min(roomOrder.indexOf(rn) + 1, 7);
+            (r.girls || []).forEach(g => {
+                const id = g.girl_id || g.name || 'g' + idx;
+                if (!girlRoomMatrix[id]) {
+                    girlRoomMatrix[id] = { girl_id: g.girl_id || null, name: g.name || '-', rooms: {} };
+                    girlOrder.push(id);
+                }
+                if (col >= 1 && col <= 7) {
+                    girlRoomMatrix[id].rooms[col] = (girlRoomMatrix[id].rooms[col] || 0) + (g.times || 0);
+                }
+            });
+        });
+        let attendanceRows = girlOrder.map(id => girlRoomMatrix[id]).slice(0, 20);
+        const { data: gpData } = await window._supabase.from('girl_payments').select('girl_id').eq('_deleted', false).eq('date', date).eq('type', 'standby');
+        const standbyGirlIds = new Set((gpData || []).map(gp => gp.girl_id).filter(Boolean));
+        if (attendanceRows.length < 20 && sale.entered_by) {
+            const includedIds = new Set(girlOrder.filter(id => id && id.length > 10));
+            (gpData || []).forEach(gp => {
+                if (gp.girl_id && !includedIds.has(gp.girl_id) && attendanceRows.length < 20) {
+                    const g = girls.find(x => x.id === gp.girl_id);
+                    if (g) {
+                        attendanceRows.push({ girl_id: gp.girl_id, name: g.name, rooms: {} });
+                        includedIds.add(gp.girl_id);
+                    }
+                }
+            });
+        }
+        attendanceRows.forEach(r => {
+            if (!r.girl_id && r.name) {
+                const g = girls.find(x => x.name === r.name);
+                if (g) r.girl_id = g.id;
+            }
+        });
+
+        // 직원 맡긴 돈 (placeholder - 추후 연동)
+        const staffDeposits = (sale.staff_deposits && Array.isArray(sale.staff_deposits)) ? sale.staff_deposits : [];
+
+        // 술 재고: 입(orders) / 출(룸 판매) / 계
+        const liquors = await DB.getAll('liquor');
+        const inv = await DB.getAll('liquor_inventory');
+        const branchId = (await DB.getAll('branches')).find(b => b.name === branchName)?.id;
+
+        const { data: ordersData } = await window._supabase.from('liquor_orders').select('*').eq('_deleted', false).eq('date', date);
+        const orders = ordersData || [];
+        const roomLiquors = (saleRooms || []).flatMap(r => (r.liquor_items || []).map(l => ({ ...l })));
+        const oldLiquorItems = (sale.liquor_items || []);
+        const soldByLiquorId = {};
+        const soldByLiquorName = {};
+        [...roomLiquors, ...oldLiquorItems].forEach(l => {
+            const q = (l.qty || 0) + (l.service || 0);
+            if (l.liquor_id) { soldByLiquorId[l.liquor_id] = (soldByLiquorId[l.liquor_id] || 0) + q; }
+            if (l.name) { soldByLiquorName[l.name] = (soldByLiquorName[l.name] || 0) + q; }
+        });
+        const orderByLiquorId = {};
+        const orderByLiquorName = {};
+        orders.forEach(o => {
+            const q = o.quantity || 0;
+            if (o.liquor_id) { orderByLiquorId[o.liquor_id] = (orderByLiquorId[o.liquor_id] || 0) + q; }
+            if (o.liquor_name) { orderByLiquorName[o.liquor_name] = (orderByLiquorName[o.liquor_name] || 0) + q; }
+        });
+
+        const leftItems = ['골든블루','W17','윈져17','임페17','윈져19','W19','윈져21','스카치21','로 샬21'];
+        const rightItems = ['죠 블21','모엣샹동','발렌23','발렌30'];
+        const liquorData = (searchName) => {
+            const sn = (searchName || '').trim();
+            const snn = sn.replace(/\s/g,'').toLowerCase();
+            const lq = liquors.find(l => {
+                const ln = (l.name || '').trim();
+                const lnn = ln.replace(/\s/g,'').toLowerCase();
+                return lnn === snn || (lnn.length >= 4 && snn.length >= 4 && (lnn.includes(snn) || snn.includes(lnn)));
+            });
+            const lid = lq?.id;
+            const lname = (lq && lq.name) ? lq.name.trim() : sn;
+            const invRec = lid ? inv.find(i => i.liquor_id === lid) : null;
+            const inQ = (lid ? orderByLiquorId[lid] : 0) || orderByLiquorName[lname] || orderByLiquorName[searchName] || 0;
+            const outQ = (lid ? soldByLiquorId[lid] : 0) || soldByLiquorName[lname] || soldByLiquorName[searchName] || 0;
+            const prevQty = invRec ? (invRec.quantity || 0) : 0;
+            const bal = prevQty + (Number(inQ) || 0) - (Number(outQ) || 0);
+            return {
+                in: inQ || '',
+                out: outQ || '',
+                bal: '',  /* 계는 입력 시에만 자동계산 표시, 초기에는 빈칸 */
+                prev: prevQty
+            };
+        };
+
+        const dateStr = date ? `${date.substr(0,4)}.${date.substr(5,2)}.${date.substr(8,2)}` : '';
+
+        const ce = (v) => v != null && v !== '' ? String(v) : '';
+        const td = (v, cls = '') => `<td class="att-c att-b px-1 py-0.5 text-center ${cls}">${ce(v)}</td>`;
+        const r4 = h('attendance_row4', ['No','이름','이름','룸','룸','룸','룸','룸','룸','룸','합계','합계','체크']);
+        const r5 = h('attendance_row5', [null,null,null,'1','2','3','4','5','6','7','계','합계',null]);
+        const th = (v, cls = '') => `<td class="att-c att-b att-h px-1 py-0.5 text-center ${cls}">${ce(v)}</td>`;
+
+        let html = `
+        <div class="attendance-sheet-table bg-white rounded shadow-sm w-full" id="att-sheet-root">
+        <table class="att-excel-table w-full text-[11px] border-collapse" cellspacing="0" cellpadding="0" style="table-layout:fixed;border:1px solid #64748b;min-width:832px">
+        <colgroup>
+            <col style="width:34px"/><col style="width:67px"/><col style="width:67px"/>
+            <col style="width:54px"/><col style="width:54px"/><col style="width:54px"/><col style="width:54px"/>
+            <col style="width:54px"/><col style="width:54px"/><col style="width:54px"/>
+            <col style="width:46px"/><col style="width:46px"/><col style="width:38px"/>
+        </colgroup>
+        <tbody>
+        <tr><td colspan="13" class="att-c att-b att-h px-1 py-1 text-center" style="height:21px"><input type="text" class="att-input text-center font-bold bg-transparent" value="출근일보 [ ${branchName || ''} ]" data-att="title" style="width:100%;color:inherit"/></td></tr>
+        <tr style="height:20px"><td colspan="11" class="att-c att-b"></td><td colspan="2" class="att-c att-b px-1 py-0.5 text-center">${ce(dateStr)}</td></tr>
+        <tr style="height:25px">
+            ${th(r4[0])}<td colspan="2" rowspan="2" class="att-c att-b att-h px-1 py-0.5 text-center">${ce(r4[1])}</td>
+            <td colspan="7" class="att-c att-b att-h px-1 py-0.5 text-center">${ce(r4[3])}</td>
+            <td colspan="2" class="att-c att-b att-h px-1 py-0.5 text-center">${ce(r4[9])}</td>
+            ${th(r4[11])}
+        </tr>
+        <tr style="height:25px">
+            <td class="att-c att-b"></td>
+            ${[0,1,2,3,4,5,6].map(i => th(r5[3+i])).join('')}
+            ${th(r5[10])}${th(r5[11])}<td class="att-c att-b"></td>
+        </tr>`;
+
+        for (let i = 0; i < 20; i++) {
+            const row = attendanceRows[i];
+            const name = row ? row.name : '';
+            const rooms = row ? row.rooms : {};
+            const roomVals = [1,2,3,4,5,6,7].map(r => rooms[r] || '');
+            const rowSum = Object.values(rooms || {}).reduce((a, b) => a + (b || 0), 0);
+            const girlId = row?.girl_id || '';
+            const checked = girlId && standbyGirlIds.has(girlId);
+            html += `<tr style="height:25px" data-att-row="att-${i}">
+                ${td(i + 1)}<td colspan="2" class="att-c att-b p-0"><input type="text" class="att-input text-left" value="${ce(name)}" data-att="att-name-${i}" data-row="${i}"/></td>
+                ${[1,2,3,4,5,6,7].map(r => `<td class="att-c att-b p-0"><input type="text" class="att-input text-center" value="${ce(roomVals[r-1])}" data-att="att-room-${i}-${r}" data-row="${i}" data-col="${r}"/></td>`).join('')}
+                <td class="att-c att-b px-1 py-0.5 text-center att-sum-row" data-row="${i}">${rowSum || ''}</td>
+                <td class="att-c att-b px-1 py-0.5 text-center att-sum-row" data-row="${i}">${rowSum || ''}</td>
+                <td class="att-c att-b p-0 text-center"><input type="checkbox" data-att="att-check-${i}" data-row="${i}" data-girl-id="${ce(girlId)}" data-date="${ce(date)}" ${checked ? 'checked' : ''} title="출근"/></td>
+            </tr>`;
+        }
+
+        const dr27 = h('deposit_row27', ['직원 맡긴 돈',null,null,null,null,'술 재고 파악',null,null,null,null,null,null,null]);
+        const dr28 = h('deposit_row28', ['No','이름',null,'금액',null,'품목','입','출','계','품목','입','출','계']);
+        html += `
+        <tr style="height:20px"><td colspan="13" class="att-c att-b"></td></tr>
+        <tr style="height:24px">
+            <td colspan="5" class="att-c att-b att-h px-1 py-0.5 text-left">${ce(dr27[0])}</td>
+            <td colspan="8" class="att-c att-b att-h px-1 py-0.5 text-center">${ce(dr27[5])}</td>
+        </tr>
+        <tr style="height:24px">
+            ${th(dr28[0])}<td colspan="2" class="att-c att-b att-h px-1 py-0.5 text-center">${ce(dr28[1])}</td>
+            <td colspan="2" class="att-c att-b att-h px-1 py-0.5 text-center">${ce(dr28[3])}</td>
+            ${th(dr28[5])}${th(dr28[6])}${th(dr28[7])}${th(dr28[8])}
+            ${th(dr28[9])}${th(dr28[10])}${th(dr28[11])}${th(dr28[12])}
+        </tr>`;
+
+        for (let i = 0; i < 10; i++) {
+            const dep = staffDeposits[i];
+            const depName = dep?.name || '';
+            const depAmt = dep?.amount != null ? Format.number(dep.amount) : '';
+            const leftItem = leftItems[i] || '';
+            const rightItem = rightItems[i] || '';
+            const lData = leftItem ? liquorData(leftItem) : null;
+            const rData = rightItem ? liquorData(rightItem) : null;
+            const lPrev = (lData && lData.prev !== undefined) ? lData.prev : (lData ? (Number(lData.bal) - Number(lData.in) + Number(lData.out)) : 0);
+            const rPrev = (rData && rData.prev !== undefined) ? rData.prev : (rData ? (Number(rData.bal) - Number(rData.in) + Number(rData.out)) : 0);
+            html += `<tr style="height:24px" data-att-row="dep-${i}">
+                ${td(i + 1)}<td colspan="2" class="att-c att-b p-0"><input type="text" class="att-input text-left" value="${ce(depName)}" data-att="dep-name-${i}"/></td>
+                <td colspan="2" class="att-c att-b p-0"><input type="text" class="att-input text-right" value="${ce(depAmt)}" data-att="dep-amt-${i}" data-row="${i}"/></td>
+                <td class="att-c att-b att-liq-item px-1 py-0.5 text-left">${ce(leftItem)}</td>
+                <td class="att-c att-b p-0"><input type="number" class="att-input text-center" value="${ce(lData ? lData.in : '')}" data-att="liq-in-L-${i}" data-item="${leftItem}"/></td>
+                <td class="att-c att-b p-0"><input type="number" class="att-input text-center" value="${ce(lData ? lData.out : '')}" data-att="liq-out-L-${i}" data-item="${leftItem}"/></td>
+                <td class="att-c att-b px-1 py-0.5 text-center att-liq-bal" data-item="${leftItem}" data-prev="${lPrev}">${ce(lData ? lData.bal : '')}</td>
+                <td class="att-c att-b att-liq-item px-1 py-0.5 text-left">${ce(rightItem)}</td>
+                <td class="att-c att-b p-0"><input type="number" class="att-input text-center" value="${ce(rData ? rData.in : '')}" data-att="liq-in-R-${i}" data-item="${rightItem}"/></td>
+                <td class="att-c att-b p-0"><input type="number" class="att-input text-center" value="${ce(rData ? rData.out : '')}" data-att="liq-out-R-${i}" data-item="${rightItem}"/></td>
+                <td class="att-c att-b px-1 py-0.5 text-center att-liq-bal" data-item="${rightItem}" data-prev="${rPrev}">${ce(rData ? rData.bal : '')}</td>
+            </tr>`;
+        }
+
+        html += `</tbody></table></div>`;
+        return html;
+    },
+
     async renderView(container) {
         const sale = await DB.getById('daily_sales', this.editId);
         if (!sale) { this.mode = 'list'; App.renderPage('settlement'); return; }
@@ -1525,6 +1909,12 @@ const SettlementPage = {
                         </div>
                     </div>
 
+                    <!-- 출근표 및 재고 (엑셀 100% 동일, 기본 표시) -->
+                    <div class="mb-6">
+                        <h4 class="text-sm font-bold text-blue-400 mb-2 flex items-center gap-1.5"><span class="material-symbols-outlined text-base">table_chart</span> 출근표 및 재고</h4>
+                        <div id="attendance-sheet-root" class="attendance-sheet-wrapper overflow-x-auto"></div>
+                    </div>
+
                     ${roomsViewHTML}
                     ${oldFormatHTML}
 
@@ -1593,6 +1983,12 @@ const SettlementPage = {
                 }
             });
         }
+        const attendanceSheetEl = document.getElementById('attendance-sheet-root');
+        if (attendanceSheetEl) {
+            const sheetHTML = await this._renderAttendanceSheet(sale, saleRooms, staff, enteredBy);
+            attendanceSheetEl.innerHTML = sheetHTML;
+        }
+
         document.getElementById('btn-download-pdf').addEventListener('click', () => {
             const el = document.getElementById('printable-area');
             if (!el) return;

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="dark" lang="ko">
+<html class="dark app-loading" lang="ko">
 <head>
     <meta charset="utf-8"/>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
@@ -10,7 +10,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💎</text></svg>"/>
     <link href="css/tailwind.css" rel="stylesheet"/>
     <link href="css/app.css?v=78" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet"/>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
@@ -117,6 +117,16 @@
                 margin: 10mm;
             }
         }
+        /* FOUC 방지: 초기 로딩 시 전체 숨김, 첫 렌더+폰트 로드 후 표시 */
+        html.app-loading #app-header,
+        html.app-loading #app-sidebar,
+        html.app-loading #main-wrapper,
+        html.app-loading #app-footer,
+        html.app-loading #sidebar-overlay { opacity: 0 !important; visibility: hidden !important; }
+        html:not(.app-loading) #app-header,
+        html:not(.app-loading) #app-sidebar,
+        html:not(.app-loading) #main-wrapper,
+        html:not(.app-loading) #app-footer { opacity: 1; visibility: visible; transition: opacity 0.2s ease; }
     </style>
 </head>
 <body class="bg-background-dark font-display text-slate-100 min-h-screen">

@@ -66,17 +66,32 @@ const App = {
         const hash = window.location.hash.replace('#/', '') || 'login';
         const page = hash.split('?')[0];
 
+        const hideLoading = () => {
+            const r = () => document.documentElement.classList.remove('app-loading');
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(() => setTimeout(r, 50));
+            } else {
+                setTimeout(r, 100);
+            }
+        };
+
         if (page !== 'login' && !Auth.isLoggedIn()) {
             this.navigate('login');
+            hideLoading();
             return;
         }
 
         if (page === 'login' && Auth.isLoggedIn()) {
             this.navigate('dashboard');
+            hideLoading();
             return;
         }
 
-        await this.renderPage(page);
+        try {
+            await this.renderPage(page);
+        } finally {
+            hideLoading();
+        }
     },
 
     _silentRefreshing: false,

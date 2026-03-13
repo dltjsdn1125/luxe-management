@@ -11,6 +11,7 @@ body {
     font-family: 'Inter', 'Noto Sans KR', sans-serif;
     background-color: var(--bg-dark);
     color: #f1f5f9;
+    overflow-x: hidden;
 }
 
 /* Scrollbar */
@@ -385,6 +386,54 @@ table {
     top: 0;
     width: 100%;
     height: 100%;
+}
+
+/* 출근표 및 재고 시트 (실선, 가독성, 헤더 표시) */
+.attendance-sheet-wrapper {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    overflow-x: auto;
+    overflow-y: visible;
+    width: 100%;
+}
+.attendance-sheet-table {
+    font-size: 11px;
+    background: #fff;
+    color: #1e293b !important; /* 다크 페이지에서도 시트 내 텍스트는 진하게 표시 */
+}
+.attendance-sheet-table .att-h {
+    color: #0f172a !important;
+    background: #e2e8f0 !important;
+    font-weight: 700 !important;
+}
+.attendance-sheet-table .att-liq-item {
+    background: #f1f5f9 !important;
+}
+.attendance-sheet-table .att-c {
+    min-width: 32px;
+    white-space: nowrap;
+    border: 1px solid #64748b !important;
+}
+.attendance-sheet-table input.att-input {
+    width: 100%;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    padding: 2px 4px;
+    font-size: inherit;
+    text-align: inherit;
+}
+.attendance-sheet-table input.att-input:focus {
+    outline: none;
+    background: #fef3c7;
+}
+.att-excel-table td, .att-excel-table th {
+    font-size: inherit;
+}
+@media (max-width: 768px) {
+    .attendance-sheet-wrapper { margin: 0 -0.5rem; padding-bottom: 0.5rem; }
+    .attendance-sheet-table { font-size: 10px; }
+    .attendance-sheet-table .att-c { min-width: 28px; padding: 2px 1px; }
 }
 
 /* 마감현황 카드 내 금액 텍스트 */
