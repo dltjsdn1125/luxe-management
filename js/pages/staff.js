@@ -639,6 +639,7 @@ const StaffPage = {
                     const existing = payData && payData[0];
                     if (existing) {
                         await DB.delete('girl_payments', existing.id);
+                        DB.notifyChange();
                         App.toast(girlName + ' ' + date + ' 출근 취소', 'success');
                     } else {
                         // 롤백
@@ -657,6 +658,7 @@ const StaffPage = {
                         entered_by: enteredBy || undefined
                     });
                     if (result) {
+                        DB.notifyChange();
                         App.toast(girlName + ' ' + date + ' 출근 저장', 'success');
                     } else {
                         // 롤백

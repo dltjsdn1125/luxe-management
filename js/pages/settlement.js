@@ -1531,6 +1531,7 @@ const SettlementPage = {
                         entered_by: enteredById
                     });
                     if (result) {
+                        DB.notifyChange();
                         App.toast((girl?.name || '') + ' 출근 저장 (직원관리 출근표와 동기화)', 'success');
                     } else {
                         t.checked = false;
@@ -1548,6 +1549,7 @@ const SettlementPage = {
                     const existing = payData?.[0];
                     if (existing) {
                         await DB.delete('girl_payments', existing.id);
+                        DB.notifyChange();
                         App.toast((girl?.name || '') + ' 출근 취소 (직원관리 출근표와 동기화)', 'success');
                     } else {
                         t.checked = true;
@@ -1604,47 +1606,47 @@ const SettlementPage = {
         const date = sale.date;
         const branchName = enteredBy?.branch_name || '';
 
-        // 출근표: 룸별 아가씨 → 행별(이름) × 열(룸1~7) 매트릭스 (직원관리 출근표와 girl_payments 연동)
+        // 출근표: 직원관리 출근표와 동일한 이름·출근현황 사용 (실시간 연동)
         const girls = await DB.getAll('girls');
-        const girlRoomMatrix = {};
-        const girlOrder = [];
+        const { data: gpData } = await window._supabase.from('girl_payments').select('girl_id').eq('_deleted', false).eq('date', date).eq('type', 'standby');
+        const standbyGirlIds = new Set((gpData || []).map(gp => gp.girl_id).filter(Boolean));
+
+        // 직원관리 출근표와 동일: 지점별 아가씨 목록 (girls where staff_id in branch staff)
+        const branchStaffIds = branchName
+            ? new Set(staff.filter(s => s.branch_name === branchName).map(s => s.id))
+            : null;
+        const branchGirls = branchStaffIds
+            ? girls.filter(g => g.staff_id && branchStaffIds.has(g.staff_id))
+            : girls;
+
+        // 룸별 T 수 (saleRooms에서 가져와서 병합)
         const roomOrder = [];
+        const girlRoomsById = {};
         (saleRooms || []).forEach((r, idx) => {
             const rn = parseInt(r.room_number, 10) || (idx + 1);
             if (!roomOrder.includes(rn)) roomOrder.push(rn);
             const col = Math.min(roomOrder.indexOf(rn) + 1, 7);
             (r.girls || []).forEach(g => {
-                const id = g.girl_id || g.name || 'g' + idx;
-                if (!girlRoomMatrix[id]) {
-                    girlRoomMatrix[id] = { girl_id: g.girl_id || null, name: g.name || '-', rooms: {} };
-                    girlOrder.push(id);
-                }
-                if (col >= 1 && col <= 7) {
-                    girlRoomMatrix[id].rooms[col] = (girlRoomMatrix[id].rooms[col] || 0) + (g.times || 0);
-                }
-            });
-        });
-        let attendanceRows = girlOrder.map(id => girlRoomMatrix[id]).slice(0, 20);
-        const { data: gpData } = await window._supabase.from('girl_payments').select('girl_id').eq('_deleted', false).eq('date', date).eq('type', 'standby');
-        const standbyGirlIds = new Set((gpData || []).map(gp => gp.girl_id).filter(Boolean));
-        if (attendanceRows.length < 20 && sale.entered_by) {
-            const includedIds = new Set(girlOrder.filter(id => id && id.length > 10));
-            (gpData || []).forEach(gp => {
-                if (gp.girl_id && !includedIds.has(gp.girl_id) && attendanceRows.length < 20) {
-                    const g = girls.find(x => x.id === gp.girl_id);
-                    if (g) {
-                        attendanceRows.push({ girl_id: gp.girl_id, name: g.name, rooms: {} });
-                        includedIds.add(gp.girl_id);
+                const gid = g.girl_id || null;
+                if (gid) {
+                    if (!girlRoomsById[gid]) girlRoomsById[gid] = {};
+                    if (col >= 1 && col <= 7) {
+                        girlRoomsById[gid][col] = (girlRoomsById[gid][col] || 0) + (g.times || 0);
                     }
                 }
             });
-        }
-        attendanceRows.forEach(r => {
-            if (!r.girl_id && r.name) {
-                const g = girls.find(x => x.name === r.name);
-                if (g) r.girl_id = g.id;
-            }
         });
+
+        // 출근한 사람(standby) 먼저, 나머지 순서로 정렬 후 최대 20명
+        const attendedFirst = branchGirls.filter(g => standbyGirlIds.has(g.id));
+        const notAttended = branchGirls.filter(g => !standbyGirlIds.has(g.id));
+        const orderedBranchGirls = [...attendedFirst, ...notAttended];
+
+        let attendanceRows = orderedBranchGirls.slice(0, 20).map(g => ({
+            girl_id: g.id,
+            name: g.name || '-',
+            rooms: girlRoomsById[g.id] || {}
+        }));
 
         // 직원 맡긴 돈 (placeholder - 추후 연동)
         const staffDeposits = (sale.staff_deposits && Array.isArray(sale.staff_deposits)) ? sale.staff_deposits : [];
@@ -1708,7 +1710,7 @@ const SettlementPage = {
 
         let html = `
         <div class="attendance-sheet-table bg-white rounded shadow-sm w-full" id="att-sheet-root">
-        <table class="att-excel-table w-full text-[11px] border-collapse" cellspacing="0" cellpadding="0" style="table-layout:fixed;border:1px solid #64748b;min-width:832px">
+        <table class="att-excel-table w-full text-[13px] border-collapse" cellspacing="0" cellpadding="0" style="table-layout:fixed;border:1px solid #64748b;min-width:832px">
         <colgroup>
             <col style="width:34px"/><col style="width:67px"/><col style="width:67px"/>
             <col style="width:54px"/><col style="width:54px"/><col style="width:54px"/><col style="width:54px"/>

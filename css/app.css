@@ -397,7 +397,7 @@ table {
     width: 100%;
 }
 .attendance-sheet-table {
-    font-size: 11px;
+    font-size: 13px;
     background: #fff;
     color: #1e293b !important; /* 다크 페이지에서도 시트 내 텍스트는 진하게 표시 */
 }
@@ -432,7 +432,7 @@ table {
 }
 @media (max-width: 768px) {
     .attendance-sheet-wrapper { margin: 0 -0.5rem; padding-bottom: 0.5rem; }
-    .attendance-sheet-table { font-size: 10px; }
+    .attendance-sheet-table { font-size: 12px; }
     .attendance-sheet-table .att-c { min-width: 28px; padding: 2px 1px; }
 }
 

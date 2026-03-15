@@ -343,8 +343,10 @@ const DB = {
     // ═══ 실시간 동기화 (Supabase Realtime) ═══
 
     _subscriptions: [],
+    _changeCallbacks: [],
 
     subscribe(callback) {
+        this._changeCallbacks.push(callback);
         // Supabase Realtime으로 모든 테이블 변경 감지
         const channel = this._sb()
             .channel('db-changes')
@@ -361,6 +363,7 @@ const DB = {
             this._sb().removeChannel(ch);
         });
         this._subscriptions = [];
+        this._changeCallbacks = [];
     },
 
     startAutoRefresh(callback, intervalMs = 30000) {
@@ -421,7 +424,9 @@ const DB = {
     autoBackup() { /* Supabase 자동 백업 사용 */ },
     getBackupDates() { return []; },
     restoreFromDate() { return false; },
-    notifyChange() { /* Supabase Realtime 사용 */ }
+    notifyChange() {
+        this._changeCallbacks.forEach(cb => { try { cb({ eventType: 'manual' }); } catch (e) { console.warn('notifyChange callback error:', e); } });
+    }
 };
 
 window.DB = DB;
